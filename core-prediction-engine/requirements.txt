@@ -1,0 +1,14 @@
+# Python 3.14+ needs current wheels (older pins fail on pydantic-core).
+fastapi>=0.142.0
+uvicorn[standard]>=0.54.0
+sqlalchemy[asyncio]>=2.1.0
+asyncpg>=0.31.0
+pydantic>=2.13.0
+pydantic-settings>=2.15.0
+httpx>=0.28.0
+redis>=5.2.0
+python-dateutil>=2.9.0.post0
+tzdata>=2024.2
+PyJWT>=2.10.0
+bcrypt>=4.2.0
+email-validator>=2.2.0
