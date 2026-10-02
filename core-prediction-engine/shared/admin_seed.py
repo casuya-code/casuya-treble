@@ -2,7 +2,7 @@
 
 from sqlalchemy import select
 
-from shared.auth_utils import hash_password
+from shared.auth_utils import hash_password, verify_password
 from shared.config import settings
 from shared.database import SessionLocal
 from shared.models import User
@@ -23,8 +23,14 @@ async def ensure_admin_account() -> None:
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if user:
+            changed = False
             if not user.is_admin:
                 user.is_admin = True
+                changed = True
+            if not verify_password(settings.admin_password, user.password_hash):
+                user.password_hash = hash_password(settings.admin_password)
+                changed = True
+            if changed:
                 await db.commit()
             return
 
