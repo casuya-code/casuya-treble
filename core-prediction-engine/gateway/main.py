@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +9,7 @@ from gateway.load_service import load_service_router
 from shared.admin_seed import ensure_admin_account
 from shared.config import APP_VERSION, settings
 from shared.database import engine, init_db
+from shared.score_sync import score_refresh_loop
 
 auth = load_service_router("0-auth-service")
 ingestion = load_service_router("1-data-ingestion-service")
@@ -22,7 +24,9 @@ purger = load_service_router("6-database-purger")
 async def lifespan(_app: FastAPI):
     await init_db()
     await ensure_admin_account()
+    refresher = asyncio.create_task(score_refresh_loop())
     yield
+    refresher.cancel()
 
 
 app = FastAPI(

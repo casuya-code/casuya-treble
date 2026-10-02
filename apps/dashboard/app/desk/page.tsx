@@ -120,6 +120,17 @@ function DeskPage() {
   }, [refresh]);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      api
+        .listSlips({ days: retentionDays })
+        .then(setSlips)
+        .catch(() => undefined);
+    }, 20000);
+    return () => window.clearInterval(timer);
+  }, [retentionDays]);
+
+  useEffect(() => {
     if (!info) return;
     const t = setTimeout(() => setInfo(null), 4000);
     return () => clearTimeout(t);

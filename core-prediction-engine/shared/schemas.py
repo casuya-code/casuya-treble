@@ -55,6 +55,9 @@ class SlipLegOut(BaseModel):
     model_probability: float
     edge: float | None = None
     is_demo: bool = False
+    home_goals: int | None = None
+    away_goals: int | None = None
+    match_finished: bool = False
 
 
 class SlipOut(BaseModel):

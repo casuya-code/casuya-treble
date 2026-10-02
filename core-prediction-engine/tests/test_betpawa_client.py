@@ -35,7 +35,36 @@ SAMPLE = {
 }
 
 
-def test_parse_betpawa_over_15():
+def test_parse_finished_score_and_ignore_a_blank_one():
+    from shared.betpawa_client import parse_event_score
+
+    finished = parse_event_score(
+        {
+            "additionalInfo": {"live": None},
+            "results": {
+                "participantPeriodResults": [
+                    {
+                        "participant": {"type": "HOME"},
+                        "periodResults": [
+                            {"period": {"slug": "FULL_TIME_EXCLUDING_OVERTIME"}, "result": "2", "type": "SCORE"}
+                        ],
+                    },
+                    {
+                        "participant": {"type": "AWAY"},
+                        "periodResults": [
+                            {"period": {"slug": "FULL_TIME_EXCLUDING_OVERTIME"}, "result": "1", "type": "SCORE"}
+                        ],
+                    },
+                ]
+            },
+        }
+    )
+    assert finished is not None
+    assert finished.home_goals == 2
+    assert finished.away_goals == 1
+    assert finished.live is False
+
+    assert parse_event_score({"additionalInfo": {}, "results": {}}) is None
     rows = parse_events_payload(SAMPLE)
     assert len(rows) == 1
     row = rows[0]

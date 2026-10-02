@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from shared.database import get_db
 from shared.deps import get_current_user
-from shared.models import Fixture, Slip, SlipLeg, SlipStatus, TimeCategory, User
+from shared.models import Fixture, MatchStatus, Slip, SlipLeg, SlipStatus, TimeCategory, User
 from shared.poisson import edge_vs_market
 from shared.schemas import SlipLegOut, SlipOut, SlipPlacedUpdate
 from shared.slip_format import (
@@ -43,6 +43,9 @@ def _slip_to_out(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> SlipOut:
                 model_probability=leg.model_probability,
                 edge=edge_vs_market(leg.model_probability, leg.leg_odds),
                 is_demo=is_demo_fixture(fx),
+                home_goals=fx.home_goals,
+                away_goals=fx.away_goals,
+                match_finished=fx.status == MatchStatus.FINISHED,
             )
         )
     combined = combined_decimal_odds([leg.leg_odds for leg in slip.legs])
@@ -142,6 +145,9 @@ async def list_slips(
         description="Slips created within this many days (max retention window)",
     ),
 ) -> list[SlipOut]:
+    from shared.score_sync import sync_betpawa_scores
+
+    await sync_betpawa_scores(db)
     await purge_practice_if_real_loaded(db)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     query = (
@@ -209,6 +215,9 @@ class SyncResponse(BaseModel):
 
 @router.post("/sync-status", response_model=SyncResponse)
 async def sync_slip_statuses(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)) -> SyncResponse:
+    from shared.score_sync import sync_betpawa_scores
+
+    await sync_betpawa_scores(db)
     count = await recompute_slip_statuses_for_user(db, user.id)
     return SyncResponse(slips_updated=count)
 
@@ -235,6 +244,9 @@ async def public_placed_history(db: AsyncSession = Depends(get_db)) -> PublicHis
     from shared.models import MatchStatus
     from shared.public_history import HistoryLeg, HistorySlip, build_public_history
 
+    from shared.score_sync import sync_betpawa_scores
+
+    await sync_betpawa_scores(db)
     await recompute_all_slip_statuses(db)
     result = await db.execute(
         select(Slip).options(selectinload(Slip.legs)).where(Slip.placed_on_betpawa.is_(True))

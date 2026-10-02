@@ -61,8 +61,8 @@ export function PublicHistoryPanel() {
       <p className="index-history-note index-history-lead">
         Open to everyone. Stake is 2,000 on each match and 2,000 on each treble. The same three matches
         appear once, even when more than one account placed them. The page refreshes on its own. A leg is won
-        once two goals are in. It is lost only when the match finishes with fewer than two. Waiting matches stay
-        out of the profit. A treble is lost as soon as one leg loses.
+        once two goals are in. The score box fills in from BetPawa on its own. A leg is lost only when the match
+        finishes with fewer than two. Waiting matches stay out of the profit. A treble is lost as soon as one leg loses.
       </p>
       {error ? <p className="banner error">{error}</p> : null}
       {!history && !error ? <p className="index-history-note">Loading results…</p> : null}
@@ -124,11 +124,15 @@ export function PublicHistoryPanel() {
                         {leg.home_team} v {leg.away_team}
                         {leg.practice ? " · Practice" : ""}
                       </span>
-                      <span>
-                        {leg.home_goals != null && leg.away_goals != null
-                          ? `${leg.home_goals}–${leg.away_goals}`
-                          : "—"}{" "}
-                        · {leg.odds.toFixed(2)} · {resultWord(leg.result)}
+                      <span className="index-leg-meta">
+                        <span className="score-box" aria-label="Final score">
+                          {leg.home_goals != null && leg.away_goals != null
+                            ? `${leg.home_goals}–${leg.away_goals}`
+                            : "—"}
+                        </span>
+                        <span>
+                          {leg.odds.toFixed(2)} · {resultWord(leg.result)}
+                        </span>
                       </span>
                     </li>
                   ))}

@@ -16,6 +16,9 @@ export interface SlipLeg {
   model_probability: number;
   edge: number | null;
   is_demo?: boolean;
+  home_goals?: number | null;
+  away_goals?: number | null;
+  match_finished?: boolean;
 }
 
 export interface Slip {

@@ -27,8 +27,25 @@ class BetPawaOver15:
     decimal_odds: float
 
 
+@dataclass
+class BetPawaScore:
+    home_goals: int
+    away_goals: int
+    live: bool
+
+
 class BetPawaError(Exception):
     pass
+
+
+def _headers() -> dict[str, str]:
+    return {
+        "X-Pawa-Brand": settings.betpawa_brand,
+        "X-Pawa-Language": settings.betpawa_language,
+        "deviceType": "mobile",
+        "traceId": str(uuid.uuid4()),
+        "Accept": "application/json",
+    }
 
 
 def _parse_start(value: str) -> datetime:
@@ -160,16 +177,9 @@ async def fetch_football_over_15(
     take_n = take if take is not None else settings.betpawa_fetch_take
     q = _build_list_query(take=take_n, skip=skip, popular_only=popular_only)
     url = f"{settings.betpawa_base_url.rstrip('/')}/api/sportsbook/v4/events/lists/by-queries?q={q}"
-    headers = {
-        "X-Pawa-Brand": settings.betpawa_brand,
-        "X-Pawa-Language": settings.betpawa_language,
-        "deviceType": "mobile",
-        "traceId": str(uuid.uuid4()),
-        "Accept": "application/json",
-    }
 
     async with httpx.AsyncClient(timeout=45.0) as client:
-        response = await client.get(url, headers=headers)
+        response = await client.get(url, headers=_headers())
         if response.status_code != 200:
             raise BetPawaError(f"BetPawa HTTP {response.status_code}: {response.text[:240]}")
         payload = response.json()
@@ -178,3 +188,46 @@ async def fetch_football_over_15(
         raise BetPawaError(f"BetPawa API error: {payload.get('error')}")
 
     return parse_events_payload(payload)
+
+
+def parse_event_score(payload: dict) -> BetPawaScore | None:
+    """Full-time score from a BetPawa event. Live matches keep the current score."""
+    info = payload.get("additionalInfo") or {}
+    live = bool(info.get("live"))
+    home: int | None = None
+    away: int | None = None
+    results = payload.get("results") or {}
+    for part in results.get("participantPeriodResults") or []:
+        side = (part.get("participant") or {}).get("type")
+        for period in part.get("periodResults") or []:
+            slug = (period.get("period") or {}).get("slug")
+            if slug != "FULL_TIME_EXCLUDING_OVERTIME":
+                continue
+            raw = period.get("result")
+            if raw is None or str(raw).strip() == "":
+                continue
+            try:
+                goals = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if side == "HOME":
+                home = goals
+            elif side == "AWAY":
+                away = goals
+    if home is None or away is None:
+        return None
+    return BetPawaScore(home_goals=home, away_goals=away, live=live)
+
+
+async def fetch_event_score(event_id: str) -> BetPawaScore | None:
+    url = f"{settings.betpawa_base_url.rstrip('/')}/api/sportsbook/v4/events/{event_id}"
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.get(url, headers=_headers())
+        if response.status_code == 404:
+            return None
+        if response.status_code != 200:
+            raise BetPawaError(f"BetPawa HTTP {response.status_code}: {response.text[:240]}")
+        payload = response.json()
+    if not isinstance(payload, dict) or payload.get("error"):
+        return None
+    return parse_event_score(payload)

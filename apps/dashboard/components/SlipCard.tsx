@@ -65,6 +65,9 @@ export function SlipCard({ slip, featured, copied, loading, onCopy, onTogglePlac
                 {leg.league && !leg.is_demo ? ` · ${leg.league}` : null}
               </span>
             </div>
+            <span className="score-box" aria-label="Score">
+              {leg.home_goals != null && leg.away_goals != null ? `${leg.home_goals}–${leg.away_goals}` : "—"}
+            </span>
           </li>
         ))}
       </ul>
