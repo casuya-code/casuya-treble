@@ -872,9 +872,40 @@ button.btn {
   padding: 0 8px;
 }
 
+.desk-module {
+  display: grid;
+  gap: 8px;
+}
+
+.desk-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.desk-side .desk-choice button {
+  min-height: 40px;
+  border: 1px solid #1f2a38;
+  border-radius: 10px;
+  background: #0b0f14;
+  box-shadow: none;
+  color: #d5deea;
+  font-size: 0.9rem;
+}
+
+.desk-side .desk-choice button.active,
+.desk-side .desk-choice button:hover:not(:disabled) {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.14);
+  color: #22c55e;
+}
+
 .desk-account {
   display: grid;
   gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid #1f2a38;
 }
 
 .desk-side .user-email {
@@ -894,12 +925,18 @@ button.btn {
 }
 
 .desk-label {
-  margin: 0 12px 4px;
+  margin: 0 2px;
   color: #8b98a9;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.desk-account-row .desk-text {
+  width: auto;
+  min-height: 36px;
+  padding: 0 10px;
 }
 
 .desk-nav {

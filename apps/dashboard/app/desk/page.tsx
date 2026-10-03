@@ -308,7 +308,7 @@ function DeskPage() {
             closePhoneSide();
           }}
           onGenerate={generate}
-          onToggleAlternatives={() => setShowAlternatives((value) => !value)}
+          onAlternatives={setShowAlternatives}
           onRefresh={() => {
             closePhoneSide();
             void refresh();
