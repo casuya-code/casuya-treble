@@ -580,10 +580,46 @@ button.btn {
   margin-bottom: 16px;
 }
 
-.result-badge {
-  font-size: 0.85rem;
-  min-height: 32px;
-  padding: 4px 10px;
+.slip-head {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.slip-head > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.badges {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.result-badge,
+.slip-card .badge,
+.slip-card .date-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  min-height: 0;
+  height: auto;
+  padding: 2px 6px;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.slip-card .badge-icon svg {
+  width: 12px;
+  height: 12px;
+  max-width: 12px;
+  max-height: 12px;
+  flex: 0 0 12px;
 }
 
 .badge,
