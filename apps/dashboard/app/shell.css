@@ -836,3 +836,199 @@ button.btn {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+.desk-app {
+  display: flex;
+  align-items: stretch;
+  min-height: 100dvh;
+}
+
+.desk-side {
+  width: 280px;
+  flex: 0 0 280px;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 14px 28px;
+  background: #121821;
+  border-right: 1px solid #1f2a38;
+}
+
+.desk-side .brand {
+  text-decoration: none;
+}
+
+.desk-side .lang-switch {
+  width: 100%;
+}
+
+.desk-side .lang-switch button {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 8px;
+}
+
+.desk-account {
+  display: grid;
+  gap: 8px;
+}
+
+.desk-side .user-email {
+  max-width: 100%;
+  font-size: 0.8rem;
+}
+
+.desk-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.desk-generate {
+  width: 100%;
+}
+
+.desk-label {
+  margin: 0 12px 4px;
+  color: #8b98a9;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.desk-nav {
+  display: grid;
+  gap: 2px;
+}
+
+.desk-side .desk-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: #d5deea;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.desk-side .desk-nav button b {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #8b98a9;
+}
+
+.desk-side .desk-nav button.active,
+.desk-side .desk-nav button:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.14);
+  color: #22c55e;
+  border: 0;
+}
+
+.desk-side .desk-nav button.active b {
+  color: #22c55e;
+}
+
+.desk-quiet {
+  display: grid;
+  gap: 2px;
+}
+
+.desk-side .desk-text,
+.desk-side a.desk-text {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: #d5deea;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+}
+
+.desk-side .desk-text:hover,
+.desk-side a.desk-text:hover {
+  background: #1a2636;
+  color: #f8fafc;
+  border: 0;
+  text-decoration: none;
+}
+
+.desk-side .tools-row {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.desk-side .tools-row .btn {
+  width: 100%;
+  flex: none;
+}
+
+.desk-main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 20px 40px;
+}
+
+.desk-top {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .desk-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 -16px 12px;
+    padding: 10px 16px;
+    background: #0b0f14;
+    border-bottom: 1px solid #1f2a38;
+  }
+
+  .desk-main {
+    padding: 0 16px 32px;
+  }
+
+  .desk-side {
+    position: fixed;
+    z-index: 40;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    height: auto;
+    width: min(320px, 88vw);
+    transform: translateX(-105%);
+    transition: transform 0.18s ease;
+    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.45);
+  }
+
+  .desk-app.side-open .desk-side {
+    transform: none;
+  }
+}

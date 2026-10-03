@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
-import { useLandingLang } from "@/components/LandingLang";
-import { FilterChip, StatusBadge, StatusKind } from "@/components/StatusBadge";
-import { SiteHeader } from "@/components/SiteHeader";
+import { DeskSide } from "@/components/DeskSide";
+import { MenuButton, useLandingLang } from "@/components/LandingLang";
+import { StatusKind } from "@/components/StatusBadge";
 import { SlipCard } from "@/components/SlipCard";
+import Link from "next/link";
 import { api, GenerateResult, Slip } from "@/lib/api";
 import { clearToken, markSignedOut } from "@/lib/auth";
 import { fill, formatDay } from "@/lib/landingCopy";
@@ -76,6 +77,7 @@ function DeskPage() {
   const [oddsApiReady, setOddsApiReady] = useState(false);
   const [betpawaReady, setBetpawaReady] = useState(true);
   const [showTools, setShowTools] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
   const [retentionDays, setRetentionDays] = useState(90);
 
   const refresh = useCallback(async () => {
@@ -257,107 +259,63 @@ function DeskPage() {
     router.replace("/");
   }
 
+  function closePhoneSide() {
+    if (window.matchMedia("(max-width: 800px)").matches) setSideOpen(false);
+  }
+
+  function generate() {
+    closePhoneSide();
+    void runAction(async () => {
+      const created = await api.generateSlips({
+        maxSlips: showAlternatives ? 3 : 1,
+        replacePending: true,
+      });
+      if (created.slips.length === 0) {
+        throw new Error(trebleGapMessage(created, t, isAdmin));
+      }
+      if (created.slips.some((slip) => slip.forced)) {
+        const odds = created.slips.map((slip) => slip.closing_odds.toFixed(2)).join(", ");
+        setInfo(fill(t.forcedReady, { odds }));
+      } else {
+        setInfo(showAlternatives ? fill(t.topReady, { n: created.slips.length }) : t.bestReady);
+      }
+    });
+  }
+
   return (
     <>
       {loading ? <div className="loading-bar" aria-hidden /> : null}
-      <SiteHeader apiOk={apiOk} email={userEmail} isAdmin={isAdmin} onLogout={logout} />
-
-      <div className="app-shell">
-        <section className="page-intro page-intro-stats-only" aria-label="Slip summary">
-          <div className="stat-frame frame">
-            <div className="stat-pill">
-              <StatusBadge kind="PENDING" label={`${stats.pending}`} />
-              <span>{t.pending}</span>
-            </div>
-            <div className="stat-pill">
-              <StatusBadge kind="WON" label={`${stats.won}`} />
-              <span>{t.won}</span>
-            </div>
-            <div className="stat-pill">
-              <StatusBadge kind="LOST" label={`${stats.lost}`} />
-              <span>{t.lost}</span>
-            </div>
-          </div>
-        </section>
-
-        {error ? (
-          <p className="banner error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {info ? <p className="banner info">{info}</p> : null}
-
-        <section className="control-panel frame">
-          <h2 className="frame-title">{t.trebleActions}</h2>
-          <div className="toolbar toolbar-main">
-            <button
-              type="button"
-              className="btn primary btn-lg"
-              disabled={loading}
-              onClick={() =>
-                runAction(async () => {
-                  const created = await api.generateSlips({
-                    maxSlips: showAlternatives ? 3 : 1,
-                    replacePending: true,
-                  });
-                  if (created.slips.length === 0) {
-                    throw new Error(trebleGapMessage(created, t, isAdmin));
-                  }
-                  if (created.slips.some((slip) => slip.forced)) {
-                    const odds = created.slips.map((slip) => slip.closing_odds.toFixed(2)).join(", ");
-                    setInfo(fill(t.forcedReady, { odds }));
-                  } else {
-                    setInfo(showAlternatives ? fill(t.topReady, { n: created.slips.length }) : t.bestReady);
-                  }
-                })
-              }
-            >
-              {showAlternatives ? t.generateTop : t.generateBest}
-            </button>
-
-            <div className="filters filters-history">
-              {(["ALL", "PENDING", "WON", "LOST", "PLACED"] as Filter[]).map((f) => (
-                <FilterChip key={f} kind={f} active={filter === f} onClick={() => setFilter(f)} />
-              ))}
-            </div>
-            {matchDates.length > 0 ? (
-              <div className="filters date-filters" aria-label={t.matchDate}>
-                <button
-                  type="button"
-                  className={`chip date-chip ${dateFilter === null ? "active" : ""}`}
-                  onClick={() => setDateFilter(null)}
-                >
-                  {t.allDates}
-                </button>
-                {matchDates.map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    className={`chip date-chip ${dateFilter === day ? "active" : ""}`}
-                    onClick={() => setDateFilter(day)}
-                  >
-                    {formatDay(day, lang)}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="toolbar toolbar-secondary">
-            <button type="button" className="chip" disabled={loading} onClick={() => setShowAlternatives((v) => !v)}>
-              {showAlternatives ? t.oneOnly : t.includeAlt}
-            </button>
-            <button type="button" className="chip" disabled={loading} onClick={() => refresh()}>
-              {t.refresh}
-            </button>
-            {isAdmin ? (
-              <button type="button" className="chip" disabled={loading} onClick={() => setShowTools((v) => !v)}>
-                {showTools ? t.hide : t.more}
-              </button>
-            ) : null}
-          </div>
-
-          {isAdmin && showTools ? (
+      <div className={`desk-app ${sideOpen ? "side-open" : ""}`}>
+        {sideOpen ? <button type="button" className="menu-backdrop" aria-label={t.menu} onClick={() => setSideOpen(false)} /> : null}
+        <DeskSide
+          email={userEmail}
+          apiOk={apiOk}
+          isAdmin={isAdmin}
+          loading={loading}
+          lang={lang}
+          stats={stats}
+          filter={filter}
+          dateFilter={dateFilter}
+          matchDates={matchDates}
+          showAlternatives={showAlternatives}
+          showTools={showTools}
+          onFilter={(next) => {
+            setFilter(next);
+            closePhoneSide();
+          }}
+          onDate={(day) => {
+            setDateFilter(day);
+            closePhoneSide();
+          }}
+          onGenerate={generate}
+          onToggleAlternatives={() => setShowAlternatives((value) => !value)}
+          onRefresh={() => {
+            closePhoneSide();
+            void refresh();
+          }}
+          onToggleTools={() => setShowTools((value) => !value)}
+          onLogout={logout}
+          tools={
             <div className="tools-row">
               {betpawaReady ? (
                 <button
@@ -418,8 +376,26 @@ function DeskPage() {
                 {t.syncScores}
               </button>
             </div>
+          }
+        />
+
+        <div className="desk-main">
+          <header className="desk-top">
+            <Link href="/" className="brand">
+              <span className="brand-mark">C</span>
+              <span className="brand-text">
+                Casuya <strong className="brand-long">Treble</strong>
+              </span>
+            </Link>
+            <MenuButton open={sideOpen} label={t.menu} onToggle={() => setSideOpen((value) => !value)} />
+          </header>
+
+          {error ? (
+            <p className="banner error" role="alert">
+              {error}
+            </p>
           ) : null}
-        </section>
+          {info ? <p className="banner info">{info}</p> : null}
 
         <section id="slips" className="slip-grid" aria-label={`Slip history, last ${retentionDays} days`}>
           {filtered.length === 0 ? (
@@ -459,6 +435,7 @@ function DeskPage() {
             ))
           )}
         </section>
+        </div>
       </div>
     </>
   );
