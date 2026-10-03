@@ -205,6 +205,15 @@ export const api = {
     }),
   syncStatus: () => request<{ slips_updated: number }>("/slips/sync-status", { method: "POST" }),
   publicHistory: () => request<PublicHistory>("/slips/history", undefined, false),
+  recordVisit: (visitorId: string) =>
+    request<VisitTotals>("/visits", { method: "POST", body: JSON.stringify({ visitor_id: visitorId }) }, false),
+};
+
+export type VisitTotals = {
+  today: number;
+  yesterday: number;
+  week: number;
+  year: number;
 };
 
 export type HistoryLeg = {

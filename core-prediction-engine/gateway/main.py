@@ -1,15 +1,22 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from uuid import UUID
+
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from pydantic import BaseModel
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from gateway.load_service import load_service_router
 from shared.admin_seed import ensure_admin_account
 from shared.config import APP_VERSION, settings
-from shared.database import engine, init_db
+from shared.database import engine, get_db, init_db
+from shared.models import PageVisit
 from shared.score_sync import score_refresh_loop
+from shared.visits import count_window_start, nairobi_today, visit_totals
 
 auth = load_service_router("0-auth-service")
 ingestion = load_service_router("1-data-ingestion-service")
@@ -54,6 +61,35 @@ app.include_router(odds.router)
 app.include_router(slips.router)
 app.include_router(tracker.router)
 app.include_router(purger.router)
+
+
+class VisitIn(BaseModel):
+    visitor_id: str
+
+
+@app.post("/visits")
+async def record_visit(body: VisitIn, db: AsyncSession = Depends(get_db)) -> dict[str, int]:
+    try:
+        key = str(UUID(body.visitor_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="visitor_id must be a UUID") from exc
+
+    today = nairobi_today()
+    existing = await db.execute(
+        select(PageVisit.id).where(PageVisit.visitor_key == key, PageVisit.visit_day == today)
+    )
+    if existing.scalar_one_or_none() is None:
+        db.add(PageVisit(visitor_key=key, visit_day=today))
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+
+    window = count_window_start(today)
+    rows = await db.execute(
+        select(PageVisit.visitor_key, PageVisit.visit_day).where(PageVisit.visit_day >= window)
+    )
+    return visit_totals(list(rows.all()), today)
 
 
 @app.get("/health")

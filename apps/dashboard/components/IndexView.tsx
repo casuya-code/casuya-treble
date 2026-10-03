@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PublicHistoryPanel } from "@/components/PublicHistoryPanel";
 import { LangSwitch, MenuButton, useLandingLang } from "@/components/LandingLang";
+import { api, VisitTotals } from "@/lib/api";
 import { isLoggedIn, takeSignedOutNotice } from "@/lib/auth";
 
 const EXAMPLE = [
@@ -40,6 +41,41 @@ function ExampleSlip() {
         {t.exn}
       </p>
     </div>
+  );
+}
+
+function visitorId(): string {
+  const key = "ct-visitor";
+  const saved = localStorage.getItem(key);
+  if (saved) return saved;
+  const created = crypto.randomUUID();
+  localStorage.setItem(key, created);
+  return created;
+}
+
+function VisitLine() {
+  const { t } = useLandingLang();
+  const [counts, setCounts] = useState<VisitTotals | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .recordVisit(visitorId())
+      .then((totals) => {
+        if (!cancelled) setCounts(totals);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const show = (value: number | undefined) => (value == null ? "–" : String(value));
+
+  return (
+    <p className="visit-line">
+      {`${t.visitToday}=${show(counts?.today)} | ${t.visitYesterday}=${show(counts?.yesterday)} | ${t.visitWeek}=${show(counts?.week)} | ${t.visitYear}=${show(counts?.year)}`}
+    </p>
   );
 }
 
@@ -156,6 +192,7 @@ function LandingPage() {
 
       <footer className="landing-footer">
         <div className="landing-wrap">
+          <VisitLine />
           <p>
             <strong>{t.f1}</strong> {t.f2}
           </p>

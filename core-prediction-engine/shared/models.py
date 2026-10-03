@@ -1,8 +1,8 @@
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -103,3 +103,14 @@ class SlipLeg(Base):
 
     slip: Mapped["Slip"] = relationship(back_populates="legs")
     fixture: Mapped["Fixture"] = relationship()
+
+
+class PageVisit(Base):
+    """One homepage visitor on one Nairobi calendar day."""
+
+    __tablename__ = "page_visits"
+    __table_args__ = (UniqueConstraint("visitor_key", "visit_day", name="uq_page_visit_day"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    visitor_key: Mapped[str] = mapped_column(String(36), index=True)
+    visit_day: Mapped[date] = mapped_column(Date, index=True)

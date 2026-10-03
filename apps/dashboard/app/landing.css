@@ -512,6 +512,12 @@
   margin: 0;
 }
 
+.visit-line {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 .landing-sticky {
   position: fixed;
   left: 0;
