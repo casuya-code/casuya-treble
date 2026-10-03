@@ -4,10 +4,12 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/AuthShell";
+import { useLandingLang } from "@/components/LandingLang";
 import { api } from "@/lib/api";
 
 function ResetForm() {
   const router = useRouter();
+  const { t } = useLandingLang();
   const params = useSearchParams();
   const tokenFromUrl = params.get("token") ?? "";
 
@@ -24,7 +26,7 @@ function ResetForm() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t.passwordsMismatch);
       return;
     }
     setLoading(true);
@@ -34,7 +36,7 @@ function ResetForm() {
       setMessage(res.message);
       setTimeout(() => router.replace("/login"), 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Reset failed");
+      setError(err instanceof Error ? err.message : t.resetFailed);
     } finally {
       setLoading(false);
     }
@@ -42,11 +44,11 @@ function ResetForm() {
 
   return (
     <AuthShell
-      title="Reset password"
-      subtitle="Choose a new password for your account."
+      title={t.resetTitle}
+      subtitle={t.resetSub}
       footer={
         <>
-          <Link href="/login">Log in</Link>
+          <Link href="/login">{t.logIn}</Link>
         </>
       }
     >
@@ -54,11 +56,11 @@ function ResetForm() {
         {error ? <p className="banner error">{error}</p> : null}
         {message ? <p className="banner info">{message}</p> : null}
         <label>
-          Reset token
+          {t.resetToken}
           <input type="text" required value={token} onChange={(e) => setToken(e.target.value)} />
         </label>
         <label>
-          New password
+          {t.newPassword}
           <input
             type="password"
             required
@@ -68,7 +70,7 @@ function ResetForm() {
           />
         </label>
         <label>
-          Confirm password
+          {t.confirmPassword}
           <input
             type="password"
             required
@@ -78,7 +80,7 @@ function ResetForm() {
           />
         </label>
         <button type="submit" className="btn primary btn-block" disabled={loading}>
-          {loading ? "Saving…" : "Update password"}
+          {loading ? t.saving : t.savePassword}
         </button>
       </form>
     </AuthShell>

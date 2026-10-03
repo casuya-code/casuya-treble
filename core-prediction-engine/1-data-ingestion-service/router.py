@@ -22,7 +22,7 @@ class BetPawaSourceStatus(BaseModel):
     configured: bool = True
     brand: str
     base_url: str
-    verify_url: str = "https://www.betpawa.co.ke/events/popular"
+    verify_url: str = "https://www.betpawa.co.tz/events/popular"
 
 
 class BetPawaImportResult(BaseModel):
@@ -95,7 +95,7 @@ async def import_from_betpawa(
 
 
 def _demo_fixtures() -> list[FixtureCreate]:
-    # Practice only — fixed future date (not today's real schedule). Same DAY bucket in Nairobi.
+    # Practice only — fixed future date (not today's real schedule). One Nairobi date so they can form a treble.
     practice_day = datetime(2099, 6, 15, tzinfo=NAIROBI).date()
     kickoff_hours = (14, 15, 16, 17, 13, 12)
     samples = [

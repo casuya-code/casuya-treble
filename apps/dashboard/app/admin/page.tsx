@@ -5,12 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { SiteHeader } from "@/components/SiteHeader";
+import { useLandingLang } from "@/components/LandingLang";
 import { api, AdminOverview, AdminUser } from "@/lib/api";
 import { clearToken, markSignedOut } from "@/lib/auth";
+import { fill } from "@/lib/landingCopy";
 import { slipCreatedLocal } from "@/lib/format";
 
 function AdminPage() {
   const router = useRouter();
+  const { t } = useLandingLang();
   const [email, setEmail] = useState<string | null>(null);
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
@@ -28,7 +31,7 @@ function AdminPage() {
       setApiOk(health.status === "ok" || health.status === "degraded");
     } catch {
       setApiOk(false);
-      setError("Server offline. Run: .\\scripts\\dev-api.ps1 -Restart");
+      setError(t.serverOffline);
       return;
     }
 
@@ -51,9 +54,9 @@ function AdminPage() {
       setError(null);
     } catch (e) {
       if (e instanceof Error && e.message === "Session expired") return;
-      setError(e instanceof Error ? e.message : "Could not load admin");
+      setError(e instanceof Error ? e.message : t.couldNotLoadAdmin);
     }
-  }, []);
+  }, [t.couldNotLoadAdmin, t.serverOffline]);
 
   useEffect(() => {
     void load();
@@ -66,7 +69,7 @@ function AdminPage() {
       await action();
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t.somethingWrong);
     } finally {
       setLoading(false);
     }
@@ -86,25 +89,36 @@ function AdminPage() {
           markSignedOut();
           router.replace("/");
         }}
+        sections={
+          allowed
+            ? [
+                { id: "users", label: users.length ? `${t.users} (${users.length})` : t.users, active: section === "users", onSelect: () => setSection("users") },
+                { id: "overview", label: t.overview, active: section === "overview", onSelect: () => setSection("overview") },
+                { id: "tools", label: t.tools, active: section === "tools", onSelect: () => setSection("tools") },
+                { id: "desk", label: t.trebleLink, href: "/desk" },
+              ]
+            : undefined
+        }
       />
       <div className="admin-layout">
-        <aside className="admin-sidebar" aria-label="Admin">
-          <p className="admin-side-label">Admin</p>
+        <aside className="admin-sidebar" aria-label={t.admin}>
+          <p className="admin-side-label">{t.admin}</p>
           <nav className="admin-nav">
             <button type="button" className={section === "users" ? "active" : ""} onClick={() => setSection("users")}>
-              Users{users.length ? ` (${users.length})` : ""}
+              {t.users}
+              {users.length ? ` (${users.length})` : ""}
             </button>
             <button
               type="button"
               className={section === "overview" ? "active" : ""}
               onClick={() => setSection("overview")}
             >
-              Overview
+              {t.overview}
             </button>
             <button type="button" className={section === "tools" ? "active" : ""} onClick={() => setSection("tools")}>
-              Tools
+              {t.tools}
             </button>
-            <Link href="/desk">Treble</Link>
+            <Link href="/desk">{t.trebleLink}</Link>
           </nav>
         </aside>
         <div className="admin-main">
@@ -117,34 +131,29 @@ function AdminPage() {
 
           {allowed === false ? (
             <section>
-              <h2>Admin only</h2>
-              <p>
-                Signed in as <strong>{email}</strong>. This login cannot list accounts. Sign in as{" "}
-                <strong>admin@casuyawin.com</strong>.
-              </p>
+              <h2>{t.adminOnly}</h2>
+              <p>{fill(t.adminDenied, { email: email ?? "" })}</p>
             </section>
           ) : null}
 
           {allowed && section === "users" ? (
             <section id="accounts">
-              <h2>Users</h2>
-              <p className="admin-lead">
-                {users.length} accounts. Disable a user to stop them signing in.
-              </p>
+              <h2>{t.users}</h2>
+              <p className="admin-lead">{fill(t.accountsLead, { n: users.length })}</p>
               <ul className="admin-users">
                 {users.map((user) => (
                   <li key={user.id} className="admin-user">
                     <div className="admin-user-meta">
                       <strong>{user.email}</strong>
                       <span className="leg-sub">
-                        {user.is_admin ? "Admin" : "User"} · {user.is_active ? "Active" : "Disabled"}
+                        {user.is_admin ? t.admin : t.userRole} · {user.is_active ? t.active : t.disabled}
                       </span>
                       <span className="leg-sub">
-                        {user.slip_count} slips · joined {slipCreatedLocal(user.created_at)}
+                        {fill(t.slipCount, { n: user.slip_count })} · {t.joined} {slipCreatedLocal(user.created_at)}
                       </span>
                     </div>
                     {user.email === email ? (
-                      <span className="leg-sub">This account</span>
+                      <span className="leg-sub">{t.thisAccount}</span>
                     ) : (
                       <button
                         type="button"
@@ -153,11 +162,11 @@ function AdminPage() {
                         onClick={() =>
                           run(async () => {
                             await api.setUserActive(user.id, !user.is_active);
-                            setInfo(user.is_active ? `Disabled ${user.email}` : `Enabled ${user.email}`);
+                            setInfo(user.is_active ? fill(t.disabledUser, { email: user.email }) : fill(t.enabledUser, { email: user.email }));
                           })
                         }
                       >
-                        {user.is_active ? "Disable" : "Enable"}
+                        {user.is_active ? t.disable : t.enable}
                       </button>
                     )}
                   </li>
@@ -168,24 +177,24 @@ function AdminPage() {
 
           {allowed && overview && section === "overview" ? (
             <section>
-              <h2>Overview</h2>
-              <p className="admin-lead">Counts for the whole desk.</p>
+              <h2>{t.overview}</h2>
+              <p className="admin-lead">{t.overviewLead}</p>
               <div className="stat-frame frame">
                 <div className="stat-pill">
                   <strong>{overview.users}</strong>
-                  <span>Users</span>
+                  <span>{t.users}</span>
                 </div>
                 <div className="stat-pill">
                   <strong>{overview.active_users}</strong>
-                  <span>Active</span>
+                  <span>{t.active}</span>
                 </div>
                 <div className="stat-pill">
                   <strong>{overview.fixtures}</strong>
-                  <span>Matches</span>
+                  <span>{t.matches}</span>
                 </div>
                 <div className="stat-pill">
                   <strong>{overview.slips}</strong>
-                  <span>Slips</span>
+                  <span>{t.slipsWord}</span>
                 </div>
               </div>
             </section>
@@ -193,8 +202,8 @@ function AdminPage() {
 
           {allowed && section === "tools" ? (
             <section>
-              <h2>Tools</h2>
-              <p className="admin-lead">Import matches, load practice data, and sync scores.</p>
+              <h2>{t.tools}</h2>
+              <p className="admin-lead">{t.toolsLead}</p>
               <div className="tools-row">
                 <button
                   type="button"
@@ -203,11 +212,11 @@ function AdminPage() {
                   onClick={() =>
                     run(async () => {
                       const r = await api.importBetPawa();
-                      setInfo(`BetPawa: ${r.events_fetched} matches saved.`);
+                      setInfo(fill(t.importSaved, { n: r.imported + r.updated }));
                     })
                   }
                 >
-                  Import BetPawa
+                  {t.importBetPawa}
                 </button>
                 <button
                   type="button"
@@ -216,11 +225,11 @@ function AdminPage() {
                   onClick={() =>
                     run(async () => {
                       const rows = await api.seedDemo();
-                      setInfo(`${rows.length} practice fixtures loaded`);
+                      setInfo(fill(t.practiceLoaded, { n: rows.length }));
                     })
                   }
                 >
-                  Practice data
+                  {t.practiceData}
                 </button>
                 {oddsReady ? (
                   <button
@@ -230,11 +239,11 @@ function AdminPage() {
                     onClick={() =>
                       run(async () => {
                         const r = await api.importOddsApi();
-                        setInfo(`Imported ${r.imported + r.updated} odds fixtures`);
+                        setInfo(fill(t.oddsImported, { n: r.imported + r.updated }));
                       })
                     }
                   >
-                    Import odds
+                    {t.importOdds}
                   </button>
                 ) : null}
                 <button
@@ -244,11 +253,11 @@ function AdminPage() {
                   onClick={() =>
                     run(async () => {
                       const r = await api.syncStatus();
-                      setInfo(r.slips_updated ? `Updated ${r.slips_updated} slip(s)` : "Statuses up to date");
+                      setInfo(r.slips_updated ? fill(t.slipsUpdated, { n: r.slips_updated }) : t.statusesOk);
                     })
                   }
                 >
-                  Sync scores
+                  {t.syncScores}
                 </button>
               </div>
             </section>

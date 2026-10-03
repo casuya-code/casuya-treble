@@ -34,3 +34,13 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE")
         )
+        await conn.execute(
+            text("ALTER TABLE slips ADD COLUMN IF NOT EXISTS forced BOOLEAN NOT NULL DEFAULT FALSE")
+        )
+
+    if engine.dialect.name != "postgresql":
+        return
+    autocommit = engine.execution_options(isolation_level="AUTOCOMMIT")
+    async with autocommit.connect() as conn:
+        for label in ("T00_06", "T06_12", "T12_18", "T18_24", "ALL_DAY"):
+            await conn.execute(text(f"ALTER TYPE time_category ADD VALUE IF NOT EXISTS '{label}'"))

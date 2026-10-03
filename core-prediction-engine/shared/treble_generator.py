@@ -1,10 +1,11 @@
 import itertools
 from dataclasses import dataclass
+from datetime import date
 from uuid import UUID
 
 from shared.models import Fixture, TimeCategory
 from shared.poisson import prob_over_15
-from shared.time_buckets import classify_kickoff
+from shared.time_buckets import local_day
 
 
 @dataclass
@@ -12,7 +13,7 @@ class CandidateLeg:
     fixture_id: UUID
     odds: float
     model_probability: float
-    kickoff_category: TimeCategory
+    kickoff_day: date
 
 
 @dataclass
@@ -21,6 +22,7 @@ class TrebleCandidate:
     combined_odds: float
     model_probability: float
     time_category: TimeCategory
+    forced: bool = False
 
 
 def _leg_from_fixture(fixture: Fixture) -> CandidateLeg | None:
@@ -31,7 +33,7 @@ def _leg_from_fixture(fixture: Fixture) -> CandidateLeg | None:
         fixture_id=fixture.id,
         odds=odds,
         model_probability=prob_over_15(fixture.lambda_home, fixture.lambda_away),
-        kickoff_category=classify_kickoff(fixture.kickoff_at),
+        kickoff_day=local_day(fixture.kickoff_at),
     )
 
 
@@ -39,7 +41,6 @@ def find_best_trebles(
     fixtures: list[Fixture],
     *,
     min_combined_odds: float = 3.0,
-    time_category: TimeCategory | None = None,
     limit: int = 5,
 ) -> list[TrebleCandidate]:
     legs: list[CandidateLeg] = []
@@ -47,27 +48,57 @@ def find_best_trebles(
         leg = _leg_from_fixture(fixture)
         if leg is None:
             continue
-        if time_category and leg.kickoff_category != time_category:
-            continue
         legs.append(leg)
 
-    candidates: list[TrebleCandidate] = []
+    qualifying: list[TrebleCandidate] = []
+    short: list[TrebleCandidate] = []
     for combo in itertools.combinations(legs, 3):
+        days = {leg.kickoff_day for leg in combo}
+        if len(days) != 1:
+            continue
         combined_odds = combo[0].odds * combo[1].odds * combo[2].odds
-        if combined_odds < min_combined_odds:
-            continue
         model_p = combo[0].model_probability * combo[1].model_probability * combo[2].model_probability
-        categories = {leg.kickoff_category for leg in combo}
-        if len(categories) != 1:
-            continue
-        candidates.append(
-            TrebleCandidate(
-                legs=combo,
-                combined_odds=combined_odds,
-                model_probability=model_p,
-                time_category=combo[0].kickoff_category,
-            )
+        candidate = TrebleCandidate(
+            legs=combo,
+            combined_odds=combined_odds,
+            model_probability=model_p,
+            time_category=TimeCategory.ALL_DAY,
+            forced=combined_odds < min_combined_odds,
         )
+        if candidate.forced:
+            short.append(candidate)
+        else:
+            qualifying.append(candidate)
 
-    candidates.sort(key=lambda c: (c.model_probability, c.combined_odds), reverse=True)
-    return candidates[:limit]
+    if qualifying:
+        qualifying.sort(key=lambda c: (c.model_probability, c.combined_odds), reverse=True)
+        return qualifying[:limit]
+    short.sort(key=lambda c: (c.combined_odds, c.model_probability), reverse=True)
+    return short[:limit]
+
+
+def count_priced_legs(fixtures: list[Fixture]) -> int:
+    return sum(1 for fixture in fixtures if _leg_from_fixture(fixture) is not None)
+
+
+def busiest_day_count(fixtures: list[Fixture]) -> int:
+    counts: dict[date, int] = {}
+    for fixture in fixtures:
+        leg = _leg_from_fixture(fixture)
+        if leg is None:
+            continue
+        counts[leg.kickoff_day] = counts.get(leg.kickoff_day, 0) + 1
+    return max(counts.values(), default=0)
+
+
+def empty_treble_reason(*, stored: int, upcoming: int, priced: int, same_day: int) -> str:
+    """Why generate found no treble. The desk turns the code into a sentence."""
+    if stored == 0:
+        return "none_loaded"
+    if upcoming == 0:
+        return "all_started"
+    if priced == 0:
+        return "no_price"
+    if priced < 3 or same_day < 3:
+        return "spread_days" if priced >= 3 else "too_few"
+    return "below_min"

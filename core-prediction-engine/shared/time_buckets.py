@@ -1,13 +1,16 @@
-from datetime import datetime, time
+"""Nairobi calendar day. A treble uses matches from one date, midnight to midnight."""
+
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from shared.models import TimeCategory
-
-# East Africa — typical BetPawa usage; override via env later if needed.
 DEFAULT_TZ = ZoneInfo("Africa/Nairobi")
-NIGHT_START = time(18, 0)
 
 
-def classify_kickoff(kickoff_at: datetime, tz: ZoneInfo = DEFAULT_TZ) -> TimeCategory:
-    local = kickoff_at.astimezone(tz) if kickoff_at.tzinfo else kickoff_at.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
-    return TimeCategory.NIGHT if local.time() >= NIGHT_START else TimeCategory.DAY
+def local_kickoff(kickoff_at: datetime, tz: ZoneInfo = DEFAULT_TZ) -> datetime:
+    if kickoff_at.tzinfo is None:
+        kickoff_at = kickoff_at.replace(tzinfo=ZoneInfo("UTC"))
+    return kickoff_at.astimezone(tz)
+
+
+def local_day(kickoff_at: datetime, tz: ZoneInfo = DEFAULT_TZ) -> date:
+    return local_kickoff(kickoff_at, tz).date()

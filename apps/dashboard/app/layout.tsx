@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Open_Sans, Source_Code_Pro } from "next/font/google";
+import { Inter, JetBrains_Mono, Open_Sans, Source_Code_Pro } from "next/font/google";
+import { LandingLangProvider } from "@/components/LandingLang";
 import { PwaRegister } from "@/components/PwaRegister";
 import "./globals.css";
+import "./shell.css";
 
 const openSans = Open_Sans({
   subsets: ["latin"],
@@ -17,11 +19,25 @@ const sourceCodePro = Source_Code_Pro({
   weight: ["400", "600", "700"],
 });
 
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-jetbrains",
+  weight: ["500", "700"],
+});
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#3883fa",
+  themeColor: "#0b0f14",
 };
 
 export const metadata: Metadata = {
@@ -44,12 +60,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${openSans.variable} ${sourceCodePro.variable}`}
+      className={`${openSans.variable} ${sourceCodePro.variable} ${inter.variable} ${jetbrains.variable}`}
       suppressHydrationWarning
     >
       <body className="app-body" suppressHydrationWarning>
-        <PwaRegister />
-        <div className="device-screen">{children}</div>
+        <LandingLangProvider>
+          <PwaRegister />
+          <div className="device-screen">{children}</div>
+        </LandingLangProvider>
       </body>
     </html>
   );

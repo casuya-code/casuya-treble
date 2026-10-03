@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
+import { useLandingLang } from "@/components/LandingLang";
 import { FilterChip, StatusBadge, StatusKind } from "@/components/StatusBadge";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SlipCard } from "@/components/SlipCard";
-import { api, Slip } from "@/lib/api";
+import { api, GenerateResult, Slip } from "@/lib/api";
 import { clearToken, markSignedOut } from "@/lib/auth";
+import { fill, formatDay } from "@/lib/landingCopy";
+import { nairobiDay, slipDates } from "@/lib/format";
 import { useRouter } from "next/navigation";
 
 type Filter = StatusKind;
@@ -24,8 +27,41 @@ function importBetPawaOnce() {
   return betpawaAutoImport;
 }
 
+function trebleGapMessage(
+  result: GenerateResult,
+  t: {
+    noTrebleNone: string;
+    noTrebleStarted: string;
+    noTreblePrice: string;
+    noTrebleFew: string;
+    noTrebleSpread: string;
+    noTrebleOdds: string;
+    noTrebleAdmin: string;
+  },
+  isAdmin: boolean,
+): string {
+  const counts = { stored: result.stored, upcoming: result.upcoming, priced: result.priced, same: result.same_day };
+  const text =
+    result.reason === "none_loaded"
+      ? t.noTrebleNone
+      : result.reason === "all_started"
+        ? fill(t.noTrebleStarted, counts)
+        : result.reason === "no_price"
+          ? fill(t.noTreblePrice, counts)
+          : result.reason === "too_few"
+            ? fill(t.noTrebleFew, counts)
+            : result.reason === "spread_days"
+              ? fill(t.noTrebleSpread, counts)
+              : fill(t.noTrebleOdds, counts);
+  if (isAdmin && (result.reason === "none_loaded" || result.reason === "all_started")) {
+    return `${text} ${t.noTrebleAdmin}`;
+  }
+  return text;
+}
+
 function DeskPage() {
   const router = useRouter();
+  const { lang, t } = useLandingLang();
   const [slips, setSlips] = useState<Slip[]>([]);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -35,6 +71,7 @@ function DeskPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("ALL");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [oddsApiReady, setOddsApiReady] = useState(false);
   const [betpawaReady, setBetpawaReady] = useState(true);
@@ -49,17 +86,19 @@ function DeskPage() {
       setApiOk(healthOk);
     } catch {
       setApiOk(false);
-      setError("Server offline. Run: .\\scripts\\dev-api.ps1 -Restart");
+      setError(t.serverOffline);
       return false;
     }
 
+    let admin = false;
     try {
       const me = await api.me();
+      admin = Boolean(me.is_admin);
       setUserEmail(me.email);
-      setIsAdmin(Boolean(me.is_admin));
+      setIsAdmin(admin);
     } catch (e) {
       if (e instanceof Error && e.message === "Session expired") return false;
-      setError(e instanceof Error ? e.message : "Could not load account");
+      setError(e instanceof Error ? e.message : t.loadAccount);
       return false;
     }
 
@@ -82,33 +121,34 @@ function DeskPage() {
       setRetentionDays(retention.retention_days);
       setSlips(await api.listSlips({ days: retention.retention_days }));
       setError(null);
-      return true;
+      return { admin };
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load slips");
+      setError(e instanceof Error ? e.message : t.loadSlips);
       return false;
     }
-  }, []);
+  }, [t.loadAccount, t.loadSlips, t.serverOffline]);
 
   useEffect(() => {
     let cancelled = false;
+    let admin = false;
     void (async () => {
       setLoading(true);
       try {
-        const ready = await refresh();
-        if (cancelled || !ready) return;
+        const session = await refresh();
+        if (cancelled || !session) return;
+        admin = session.admin;
         const imported = await importBetPawaOnce();
         if (cancelled) return;
         const cleared =
-          imported.practice_removed > 0 ? ` Removed ${imported.practice_removed} old practice matches.` : "";
-        setInfo(
-          `BetPawa updated: ${imported.events_fetched} matches.${cleared} Import BetPawa is still there if you want to refresh again.`
-        );
+          imported.practice_removed > 0 ? ` ${fill(t.practiceRemoved, { n: imported.practice_removed })}` : "";
+        const again = session.admin ? ` ${t.importAgain}` : "";
+        setInfo(`${fill(t.betpawaUpdated, { n: imported.events_fetched })}${cleared}${again}`);
         const retention = await api.retentionDays();
         if (cancelled) return;
         setSlips(await api.listSlips({ days: retention.retention_days }));
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Could not refresh BetPawa. Use More → Import BetPawa.");
+          setError(e instanceof Error ? e.message : admin ? t.refreshFailed : t.refreshFailedOpen);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -117,7 +157,7 @@ function DeskPage() {
     return () => {
       cancelled = true;
     };
-  }, [refresh]);
+  }, [refresh, t]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -132,19 +172,50 @@ function DeskPage() {
 
   useEffect(() => {
     if (!info) return;
-    const t = setTimeout(() => setInfo(null), 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setInfo(null), 4000);
+    return () => clearTimeout(timer);
   }, [info]);
 
   const filtered = useMemo(() => {
-    if (filter === "ALL") return slips;
-    if (filter === "PLACED") return slips.filter((s) => s.placed_on_betpawa);
-    if (filter === "DAY" || filter === "NIGHT") return slips.filter((s) => s.time_category === filter);
-    if (filter === "PENDING" || filter === "WON" || filter === "LOST" || filter === "LIVE") {
-      return slips.filter((s) => s.status === filter);
+    const byStatus = (() => {
+      if (filter === "ALL") return slips;
+      if (filter === "PLACED") return slips.filter((s) => s.placed_on_betpawa);
+      if (filter === "PENDING" || filter === "WON" || filter === "LOST" || filter === "LIVE") {
+        return slips.filter((s) => s.status === filter);
+      }
+      return slips;
+    })();
+    if (!dateFilter) return byStatus;
+    return byStatus.filter((slip) => {
+      const days = slipDates(slip.legs.map((leg) => leg.kickoff_at));
+      return days.length === 1 && days[0] === dateFilter;
+    });
+  }, [slips, filter, dateFilter]);
+
+  const matchDates = useMemo(() => {
+    const days = new Set<string>();
+    for (const slip of slips) {
+      const slipDays = slipDates(slip.legs.map((leg) => leg.kickoff_at));
+      if (slipDays.length === 1) days.add(slipDays[0]);
     }
-    return slips;
-  }, [slips, filter]);
+    return [...days].sort();
+  }, [slips]);
+
+  useEffect(() => {
+    if (dateFilter && !matchDates.includes(dateFilter)) setDateFilter(null);
+  }, [dateFilter, matchDates]);
+
+  const dayGroups = useMemo(() => {
+    const groups = new Map<string, Slip[]>();
+    for (const slip of filtered) {
+      const days = slipDates(slip.legs.map((leg) => leg.kickoff_at));
+      const key = days.join("|") || nairobiDay(slip.timestamp);
+      const rows = groups.get(key) ?? [];
+      rows.push(slip);
+      groups.set(key, rows);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered]);
 
   const topSlipId =
     filter === "ALL" || filter === "PENDING" ? filtered.find((s) => s.status === "PENDING")?.slip_id : undefined;
@@ -164,7 +235,7 @@ function DeskPage() {
       await action();
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t.somethingWrong);
     } finally {
       setLoading(false);
     }
@@ -174,9 +245,9 @@ function DeskPage() {
     try {
       await navigator.clipboard.writeText(slip.betpawa_copy_text);
       setCopiedId(slip.slip_id);
-      setTimeout(() => setCopiedId(null), 2000);
+      setTimeout(() => setCopiedId(null), 3500);
     } catch {
-      setError("Copy failed — select text manually or use HTTPS.");
+      setError(t.copyFailed);
     }
   }
 
@@ -196,15 +267,15 @@ function DeskPage() {
           <div className="stat-frame frame">
             <div className="stat-pill">
               <StatusBadge kind="PENDING" label={`${stats.pending}`} />
-              <span>Pending</span>
+              <span>{t.pending}</span>
             </div>
             <div className="stat-pill">
               <StatusBadge kind="WON" label={`${stats.won}`} />
-              <span>Won</span>
+              <span>{t.won}</span>
             </div>
             <div className="stat-pill">
               <StatusBadge kind="LOST" label={`${stats.lost}`} />
-              <span>Lost</span>
+              <span>{t.lost}</span>
             </div>
           </div>
         </section>
@@ -217,7 +288,7 @@ function DeskPage() {
         {info ? <p className="banner info">{info}</p> : null}
 
         <section className="control-panel frame">
-          <h2 className="frame-title">Treble actions</h2>
+          <h2 className="frame-title">{t.trebleActions}</h2>
           <div className="toolbar toolbar-main">
             <button
               type="button"
@@ -229,37 +300,59 @@ function DeskPage() {
                     maxSlips: showAlternatives ? 3 : 1,
                     replacePending: true,
                   });
-                  if (created.length === 0) {
-                    throw new Error(
-                      betpawaReady || oddsApiReady
-                        ? "No treble found. More → Import BetPawa for today's matches, or Practice data to test."
-                        : "No treble found. More → Import BetPawa, or use Practice data to test."
-                    );
+                  if (created.slips.length === 0) {
+                    throw new Error(trebleGapMessage(created, t, isAdmin));
                   }
-                  setInfo(showAlternatives ? `${created.length} trebles ready` : "Best treble ready");
+                  if (created.slips.some((slip) => slip.forced)) {
+                    const odds = created.slips.map((slip) => slip.closing_odds.toFixed(2)).join(", ");
+                    setInfo(fill(t.forcedReady, { odds }));
+                  } else {
+                    setInfo(showAlternatives ? fill(t.topReady, { n: created.slips.length }) : t.bestReady);
+                  }
                 })
               }
             >
-              Generate {showAlternatives ? "top 3" : "best treble"}
+              {showAlternatives ? t.generateTop : t.generateBest}
             </button>
 
             <div className="filters filters-history">
-              {(["ALL", "PENDING", "WON", "LOST", "PLACED", "DAY", "NIGHT"] as Filter[]).map((f) => (
+              {(["ALL", "PENDING", "WON", "LOST", "PLACED"] as Filter[]).map((f) => (
                 <FilterChip key={f} kind={f} active={filter === f} onClick={() => setFilter(f)} />
               ))}
             </div>
+            {matchDates.length > 0 ? (
+              <div className="filters date-filters" aria-label={t.matchDate}>
+                <button
+                  type="button"
+                  className={`chip date-chip ${dateFilter === null ? "active" : ""}`}
+                  onClick={() => setDateFilter(null)}
+                >
+                  {t.allDates}
+                </button>
+                {matchDates.map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    className={`chip date-chip ${dateFilter === day ? "active" : ""}`}
+                    onClick={() => setDateFilter(day)}
+                  >
+                    {formatDay(day, lang)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div className="toolbar toolbar-secondary">
             <button type="button" className="chip" disabled={loading} onClick={() => setShowAlternatives((v) => !v)}>
-              {showAlternatives ? "One treble only" : "Include alternatives"}
+              {showAlternatives ? t.oneOnly : t.includeAlt}
             </button>
             <button type="button" className="chip" disabled={loading} onClick={() => refresh()}>
-              Refresh
+              {t.refresh}
             </button>
             {isAdmin ? (
               <button type="button" className="chip" disabled={loading} onClick={() => setShowTools((v) => !v)}>
-                {showTools ? "Hide" : "More"}
+                {showTools ? t.hide : t.more}
               </button>
             ) : null}
           </div>
@@ -275,16 +368,12 @@ function DeskPage() {
                     runAction(async () => {
                       const r = await api.importBetPawa();
                       const cleared =
-                        r.practice_removed > 0
-                          ? ` Removed ${r.practice_removed} old practice matches.`
-                          : "";
-                      setInfo(
-                        `BetPawa: ${r.events_fetched} matches (${r.imported + r.updated} saved).${cleared} Generate a new treble, then check odds on betpawa.co.ke.`
-                      );
+                        r.practice_removed > 0 ? ` ${fill(t.practiceRemoved, { n: r.practice_removed })}` : "";
+                      setInfo(`${fill(t.importSaved, { n: r.imported + r.updated })}${cleared}`);
                     })
                   }
                 >
-                  Import BetPawa
+                  {t.importBetPawa}
                 </button>
               ) : null}
               <button
@@ -294,11 +383,11 @@ function DeskPage() {
                 onClick={() =>
                   runAction(async () => {
                     const rows = await api.seedDemo();
-                    setInfo(`${rows.length} practice fixtures loaded`);
+                    setInfo(fill(t.practiceLoaded, { n: rows.length }));
                   })
                 }
               >
-                Practice data
+                {t.practiceData}
               </button>
               {oddsApiReady ? (
                 <button
@@ -308,11 +397,11 @@ function DeskPage() {
                   onClick={() =>
                     runAction(async () => {
                       const r = await api.importOddsApi();
-                      setInfo(`Imported ${r.imported + r.updated} fixtures`);
+                      setInfo(fill(t.oddsImported, { n: r.imported + r.updated }));
                     })
                   }
                 >
-                  Import odds
+                  {t.importOdds}
                 </button>
               ) : null}
               <button
@@ -322,11 +411,11 @@ function DeskPage() {
                 onClick={() =>
                   runAction(async () => {
                     const r = await api.syncStatus();
-                    setInfo(r.slips_updated ? `Updated ${r.slips_updated} slip(s)` : "Statuses up to date");
+                    setInfo(r.slips_updated ? fill(t.slipsUpdated, { n: r.slips_updated }) : t.statusesOk);
                   })
                 }
               >
-                Sync scores
+                {t.syncScores}
               </button>
             </div>
           ) : null}
@@ -335,32 +424,38 @@ function DeskPage() {
         <section id="slips" className="slip-grid" aria-label={`Slip history, last ${retentionDays} days`}>
           {filtered.length === 0 ? (
             <div className="empty card">
-              <p className="empty-title">No trebles yet</p>
-              <p className="empty-steps">
-                Matches load from BetPawa when you open this page. Tap <strong>Generate best treble</strong>.
-                {isAdmin ? (
-                  <>
-                    {" "}
-                    Use <strong>More → Import BetPawa</strong> or the Admin page when you want a fresh list.
-                  </>
-                ) : null}
+              <p className="empty-title">
+                {dateFilter && filter === "ALL"
+                  ? fill(t.noTrebleOnDate, { date: formatDay(dateFilter, lang) })
+                  : t.noTrebles}
               </p>
+              {dateFilter && filter === "ALL" ? null : (
+                <p className="empty-steps">
+                  {t.noTreblesBody}
+                  {isAdmin ? ` ${t.noTreblesAdmin}` : null}
+                </p>
+              )}
             </div>
           ) : (
-            filtered.map((slip) => (
-              <SlipCard
-                key={slip.slip_id}
-                slip={slip}
-                featured={slip.slip_id === topSlipId && slip.status === "PENDING"}
-                copied={copiedId === slip.slip_id}
-                loading={loading}
-                onCopy={() => copySlip(slip)}
-                onTogglePlaced={() =>
-                  runAction(async () => {
-                    await api.markPlaced(slip.slip_id, !slip.placed_on_betpawa);
-                  })
-                }
-              />
+            dayGroups.map(([dayKey, rows]) => (
+              <div key={dayKey} className="slip-day">
+                <h3 className="slip-day-head">{dayKey.split("|").map((day) => formatDay(day, lang)).join(" · ")}</h3>
+                {rows.map((slip) => (
+                  <SlipCard
+                    key={slip.slip_id}
+                    slip={slip}
+                    featured={slip.slip_id === topSlipId && slip.status === "PENDING"}
+                    copied={copiedId === slip.slip_id}
+                    loading={loading}
+                    onCopy={() => copySlip(slip)}
+                    onTogglePlaced={() =>
+                      runAction(async () => {
+                        await api.markPlaced(slip.slip_id, !slip.placed_on_betpawa);
+                      })
+                    }
+                  />
+                ))}
+              </div>
             ))
           )}
         </section>

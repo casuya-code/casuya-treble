@@ -9,7 +9,7 @@ Modular football analytics: Poisson Over 1.5, ≥3.00 treble generation, slip tr
 | API | Python 3.12–3.14, FastAPI, SQLAlchemy, asyncpg |
 | DB | PostgreSQL (`casuyawin`) |
 | UI | Next.js Treble Desk (mobile-first, PWA) |
-| Match feed | BetPawa Kenya sportsbook listings (default) |
+| Match feed | BetPawa Tanzania sportsbook listings (default) |
 | Live odds (optional) | [The Odds API](https://the-odds-api.com/) |
 
 ## Project layout
@@ -51,7 +51,7 @@ Open http://localhost:3000 → register / log in.
 
 ### Real matches (recommended)
 
-1. Open the desk — it pulls upcoming football + Over 1.5 from betpawa.co.ke once per visit
+1. Open the desk — it pulls upcoming football + Over 1.5 from betpawa.co.tz once per visit
 2. **Generate best treble** → **Copy for BetPawa** → place manually on BetPawa → **Mark placed**
 3. **More → Import BetPawa** anytime you want to refresh the list again
 

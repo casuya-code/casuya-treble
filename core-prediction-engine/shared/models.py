@@ -12,6 +12,11 @@ from shared.database import Base
 class TimeCategory(str, enum.Enum):
     DAY = "DAY"
     NIGHT = "NIGHT"
+    T00_06 = "T00_06"
+    T06_12 = "T06_12"
+    T12_18 = "T12_18"
+    T18_24 = "T18_24"
+    ALL_DAY = "ALL_DAY"
 
 
 class SlipStatus(str, enum.Enum):
@@ -77,6 +82,7 @@ class Slip(Base):
     closing_odds: Mapped[float] = mapped_column(Float)
     status: Mapped[SlipStatus] = mapped_column(Enum(SlipStatus, name="slip_status"), default=SlipStatus.PENDING)
     placed_on_betpawa: Mapped[bool] = mapped_column(default=False)
+    forced: Mapped[bool] = mapped_column(default=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True

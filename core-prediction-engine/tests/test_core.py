@@ -34,7 +34,72 @@ def test_find_trebles_respects_min_odds():
     trebles = find_best_trebles(fixtures, min_combined_odds=3.0, limit=1)
     assert len(trebles) == 1
     assert trebles[0].combined_odds >= 3.0
-    assert trebles[0].time_category == TimeCategory.DAY
+    assert trebles[0].time_category == TimeCategory.ALL_DAY
+    assert trebles[0].forced is False
+
+
+def test_short_treble_is_offered_as_forced():
+    kick = datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc)
+    prices = [1.44, 1.44, 1.44, 1.20]
+    fixtures = []
+    for i, odds in enumerate(prices):
+        fixtures.append(
+            Fixture(
+                id=uuid4(),
+                home_team=f"H{i}",
+                away_team=f"A{i}",
+                kickoff_at=kick,
+                lambda_home=1.6,
+                lambda_away=1.0,
+                closing_odds_over_15=odds,
+            )
+        )
+    trebles = find_best_trebles(fixtures, min_combined_odds=3.0, limit=1)
+    assert len(trebles) == 1
+    assert trebles[0].forced is True
+    assert abs(trebles[0].combined_odds - (1.44 * 1.44 * 1.44)) < 1e-9
+
+
+def test_treble_uses_one_calendar_day():
+    from shared.time_buckets import local_day
+    from zoneinfo import ZoneInfo
+
+    nairobi = ZoneInfo("Africa/Nairobi")
+
+    def at(hour: int, day: int = 3):
+        return datetime(2026, 10, day, hour, 0, tzinfo=nairobi)
+
+    kicks = (at(13), at(15), at(20), at(15, 4))
+    fixtures = []
+    for i, kick in enumerate(kicks):
+        fixtures.append(
+            Fixture(
+                id=uuid4(),
+                home_team=f"H{i}",
+                away_team=f"A{i}",
+                kickoff_at=kick,
+                lambda_home=1.6,
+                lambda_away=1.0,
+                closing_odds_over_15=1.5,
+            )
+        )
+    trebles = find_best_trebles(fixtures, min_combined_odds=3.0, limit=5)
+    assert len(trebles) == 1
+    assert trebles[0].time_category == TimeCategory.ALL_DAY
+    chosen = {leg.fixture_id for leg in trebles[0].legs}
+    assert fixtures[3].id not in chosen
+    assert {local_day(row.kickoff_at) for row in fixtures if row.id in chosen} == {local_day(kicks[0])}
+
+
+def test_empty_treble_reason_names_the_gap():
+    from shared.treble_generator import empty_treble_reason
+
+    assert empty_treble_reason(stored=0, upcoming=0, priced=0, same_day=0) == "none_loaded"
+    assert empty_treble_reason(stored=12, upcoming=0, priced=0, same_day=0) == "all_started"
+    assert empty_treble_reason(stored=8, upcoming=8, priced=0, same_day=0) == "no_price"
+    assert empty_treble_reason(stored=8, upcoming=2, priced=2, same_day=2) == "too_few"
+    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=2) == "spread_days"
+    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=8) == "below_min"
 
 
 def test_upcoming_fixtures_skip_started_matches():

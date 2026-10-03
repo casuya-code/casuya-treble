@@ -1,4 +1,4 @@
-"""Fetch upcoming football fixtures and Over 1.5 odds from BetPawa Kenya sportsbook API."""
+"""Fetch upcoming football fixtures and Over 1.5 odds from BetPawa Tanzania sportsbook API."""
 
 from __future__ import annotations
 

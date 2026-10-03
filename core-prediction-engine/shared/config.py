@@ -20,9 +20,9 @@ class Settings(BaseSettings):
     odds_default_sport: str = "soccer_epl"
     odds_default_region: str = "uk"
 
-    # BetPawa Kenya — public sportsbook listings (no API key)
-    betpawa_base_url: str = "https://www.betpawa.co.ke"
-    betpawa_brand: str = "betpawa-kenya"
+    # BetPawa Tanzania — public sportsbook listings (no API key)
+    betpawa_base_url: str = "https://www.betpawa.co.tz"
+    betpawa_brand: str = "betpawa-tanzania"
     betpawa_language: str = "en"
     betpawa_football_category: str = "2"
     betpawa_fetch_take: int = 60

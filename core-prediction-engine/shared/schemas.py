@@ -69,6 +69,7 @@ class SlipOut(BaseModel):
     edge: float | None
     status: SlipStatus
     placed_on_betpawa: bool
+    forced: bool = False
     timestamp: datetime
     legs: list[SlipLegOut]
     betpawa_copy_text: str

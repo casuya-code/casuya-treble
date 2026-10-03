@@ -26,16 +26,9 @@ def average_leg_edge(legs_model_p: list[float], legs_odds: list[float]) -> float
 
 
 def build_betpawa_copy(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> str:
-    combined = combined_decimal_odds([leg.leg_odds for leg in slip.legs])
-    lines = [
-        f"CASUYA TREBLE ({slip.time_category.value})",
-        f"Combined target: {combined:.2f}+ | Model: {slip.model_probability * 100:.1f}%",
-        "",
-    ]
-    for i, leg in enumerate(slip.legs, start=1):
+    """Match names only, one per line, ready to paste into BetPawa search."""
+    lines: list[str] = []
+    for leg in slip.legs:
         fx = fixtures_by_id[leg.fixture_id]
-        kick = fx.kickoff_at.astimezone().strftime("%d %b %H:%M")
-        lines.append(f"{i}. {fx.home_team} v {fx.away_team}")
-        lines.append(f"   {leg.market} @ {leg.leg_odds:.2f}  ({kick})")
-    lines.extend(["", "Place as accumulator on BetPawa — verify combined odds on site."])
+        lines.append(f"{fx.home_team} v {fx.away_team}")
     return "\n".join(lines)

@@ -2,7 +2,7 @@ import { clearToken, getToken } from "./auth";
 import { API_URL } from "./config";
 import { formatApiErrorDetail } from "./apiError";
 
-export type TimeCategory = "DAY" | "NIGHT";
+export type TimeCategory = "DAY" | "NIGHT" | "T00_06" | "T06_12" | "T12_18" | "T18_24" | "ALL_DAY";
 export type SlipStatus = "PENDING" | "LIVE" | "WON" | "LOST";
 
 export interface SlipLeg {
@@ -30,15 +30,24 @@ export interface Slip {
   edge: number | null;
   status: SlipStatus;
   placed_on_betpawa: boolean;
+  forced?: boolean;
   timestamp: string;
   legs: SlipLeg[];
   betpawa_copy_text: string;
 }
 
+export type GenerateResult = {
+  slips: Slip[];
+  reason: "none_loaded" | "all_started" | "no_price" | "too_few" | "spread_days" | "below_min" | null;
+  stored: number;
+  upcoming: number;
+  priced: number;
+  same_day: number;
+};
+
 export type GenerateOptions = {
   minOdds?: number;
   maxSlips?: number;
-  category?: TimeCategory;
   replacePending?: boolean;
 };
 
@@ -173,14 +182,13 @@ export const api = {
     ),
   seedDemo: () => request<{ id: string }[]>("/ingestion/fixtures/seed-demo", { method: "POST" }),
   generateSlips: (opts: GenerateOptions = {}) => {
-    const { minOdds = 3, maxSlips = 1, category, replacePending = true } = opts;
+    const { minOdds = 3, maxSlips = 1, replacePending = true } = opts;
     const params = new URLSearchParams({
       min_odds: String(minOdds),
       max_slips: String(maxSlips),
       replace_pending: String(replacePending),
     });
-    if (category) params.set("category", category);
-    return request<Slip[]>(`/slips/generate?${params}`, { method: "POST" });
+    return request<GenerateResult>(`/slips/generate?${params}`, { method: "POST" });
   },
   listSlips: (opts?: { days?: number; status?: SlipStatus }) => {
     const params = new URLSearchParams();
@@ -212,6 +220,7 @@ export type HistoryLeg = {
 export type HistorySlip = {
   slip_id: string;
   date: string;
+  forced?: boolean;
   result: "won" | "lost" | "pending";
   combined_odds: number;
   profit: number | null;

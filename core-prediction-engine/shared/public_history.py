@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from shared.poisson import leg_won_over_15
-from shared.time_buckets import DEFAULT_TZ
+from shared.time_buckets import local_day
 
 STAKE = 2000
 
@@ -28,6 +28,7 @@ class HistorySlip:
     slip_id: str
     placed_at: datetime
     legs: list[HistoryLeg]
+    forced: bool = False
 
 
 def leg_result(leg: HistoryLeg) -> str:
@@ -63,8 +64,7 @@ def treble_profit(legs: list[HistoryLeg]) -> float | None:
 
 
 def _nairobi_date(moment: datetime) -> str:
-    local = moment.astimezone(DEFAULT_TZ) if moment.tzinfo else moment
-    return local.date().isoformat()
+    return local_day(moment).isoformat()
 
 
 def build_public_history(slips: list[HistorySlip]) -> dict:
@@ -106,8 +106,9 @@ def build_public_history(slips: list[HistorySlip]) -> dict:
     history = []
     for slip in _unique_accumulators(slips):
         profit = treble_profit(slip.legs)
-        last_kick = max(leg.kickoff_at for leg in slip.legs)
-        day = _nairobi_date(last_kick)
+        slip_days = sorted({_nairobi_date(leg.kickoff_at) for leg in slip.legs})
+        day = slip_days[0]
+        date_label = "|".join(slip_days)
         days[day]["trebles_placed"] += 1
         if profit is None:
             trebles_pending += 1
@@ -126,7 +127,8 @@ def build_public_history(slips: list[HistorySlip]) -> dict:
         history.append(
             {
                 "slip_id": slip.slip_id,
-                "date": day,
+                "date": date_label,
+                "forced": slip.forced,
                 "result": slip_result,
                 "combined_odds": round(_product(slip.legs), 2),
                 "profit": profit,
@@ -188,7 +190,11 @@ def _unique_accumulators(slips: list[HistorySlip]) -> list[HistorySlip]:
         if len(slip.legs) != 3:
             continue
         key = tuple(sorted(leg.fixture_id for leg in slip.legs))
-        seen.setdefault(key, slip)
+        kept = seen.get(key)
+        if kept is None:
+            seen[key] = slip
+        elif slip.forced:
+            kept.forced = True
     return list(seen.values())
 
 

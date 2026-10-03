@@ -22,7 +22,7 @@ from shared.config import settings
 from shared.fixture_source import is_demo_fixture, prefer_real_fixtures, upcoming_fixtures
 from shared.practice_cleanup import purge_practice_if_real_loaded
 from shared.tracker_logic import recompute_all_slip_statuses, recompute_slip_statuses_for_user
-from shared.treble_generator import find_best_trebles
+from shared.treble_generator import busiest_day_count, count_priced_legs, empty_treble_reason, find_best_trebles
 
 router = APIRouter(prefix="/slips", tags=["slip-generator"])
 
@@ -63,34 +63,63 @@ def _slip_to_out(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> SlipOut:
         edge=round(avg_edge, 4) if avg_edge is not None else None,
         status=slip.status,
         placed_on_betpawa=slip.placed_on_betpawa,
+        forced=slip.forced,
         timestamp=slip.timestamp,
         legs=legs_out,
         betpawa_copy_text=build_betpawa_copy(slip, fixtures_by_id),
     )
 
 
-@router.post("/generate", response_model=list[SlipOut])
+class GenerateResult(BaseModel):
+    slips: list[SlipOut]
+    reason: str | None = None
+    stored: int = 0
+    upcoming: int = 0
+    priced: int = 0
+    same_day: int = 0
+
+
+@router.post("/generate", response_model=GenerateResult)
 async def generate_slips(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     min_odds: float = Query(3.0, ge=2.0, le=10.0),
-    category: TimeCategory | None = Query(None),
     max_slips: int = Query(1, ge=1, le=10),
     replace_pending: bool = Query(True),
-) -> list[SlipOut]:
+) -> GenerateResult:
+    result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
+    all_fixtures = list(result.scalars().all())
+    upcoming = upcoming_fixtures(all_fixtures)
+    fixtures = prefer_real_fixtures(upcoming)
+    trebles = find_best_trebles(fixtures, min_combined_odds=min_odds, limit=max_slips)
+    priced = count_priced_legs(fixtures)
+    same_day = busiest_day_count(fixtures)
+    if not trebles:
+        return GenerateResult(
+            slips=[],
+            reason=empty_treble_reason(
+                stored=len(all_fixtures),
+                upcoming=len(fixtures),
+                priced=priced,
+                same_day=same_day,
+            ),
+            stored=len(all_fixtures),
+            upcoming=len(fixtures),
+            priced=priced,
+            same_day=same_day,
+        )
+
     if replace_pending:
         pending = await db.execute(
-            select(Slip.slip_id).where(Slip.status == SlipStatus.PENDING, Slip.user_id == user.id)
+            select(Slip.slip_id).where(
+                Slip.status == SlipStatus.PENDING,
+                Slip.user_id == user.id,
+                Slip.placed_on_betpawa.is_(False),
+            )
         )
         pending_ids = [row[0] for row in pending.all()]
         if pending_ids:
             await db.execute(delete(Slip).where(Slip.slip_id.in_(pending_ids)))
-            await db.commit()
-
-    result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
-    all_fixtures = list(result.scalars().all())
-    fixtures = prefer_real_fixtures(upcoming_fixtures(all_fixtures))
-    trebles = find_best_trebles(fixtures, min_combined_odds=min_odds, time_category=category, limit=max_slips)
 
     created: list[Slip] = []
     for treble in trebles:
@@ -101,6 +130,7 @@ async def generate_slips(
             model_probability=round(treble.model_probability, 6),
             closing_odds=combined,
             status=SlipStatus.PENDING,
+            forced=treble.forced,
         )
         for leg in treble.legs:
             slip.legs.append(
@@ -120,7 +150,7 @@ async def generate_slips(
     fixtures_by_id = {f.id: f for f in fixtures}
     out = [_slip_to_out(s, fixtures_by_id) for s in created]
     out.sort(key=lambda s: s.model_probability, reverse=True)
-    return out
+    return GenerateResult(slips=out, stored=len(all_fixtures), upcoming=len(fixtures), priced=priced, same_day=same_day)
 
 
 class RetentionInfo(BaseModel):
@@ -148,6 +178,7 @@ async def list_slips(
     from shared.score_sync import sync_betpawa_scores
 
     await sync_betpawa_scores(db)
+    await recompute_slip_statuses_for_user(db, user.id)
     await purge_practice_if_real_loaded(db)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     query = (
@@ -181,7 +212,11 @@ async def list_slips(
 @router.delete("/pending", response_model=dict)
 async def clear_pending_slips(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
     result = await db.execute(
-        delete(Slip).where(Slip.status == SlipStatus.PENDING, Slip.user_id == user.id)
+        delete(Slip).where(
+            Slip.status == SlipStatus.PENDING,
+            Slip.user_id == user.id,
+            Slip.placed_on_betpawa.is_(False),
+        )
     )
     await db.commit()
     return {"deleted": result.rowcount or 0}
@@ -206,6 +241,8 @@ async def mark_placed_on_betpawa(
     fixture_ids = [leg.fixture_id for leg in slip.legs]
     fx_result = await db.execute(select(Fixture).where(Fixture.id.in_(fixture_ids)))
     fixtures_by_id = {f.id: f for f in fx_result.scalars().all()}
+    if any(leg.fixture_id not in fixtures_by_id for leg in slip.legs):
+        raise HTTPException(status_code=404, detail="Slip not found")
     return _slip_to_out(slip, fixtures_by_id)
 
 
@@ -279,7 +316,14 @@ async def public_placed_history(db: AsyncSession = Depends(get_db)) -> PublicHis
                 )
             )
         if legs:
-            built.append(HistorySlip(slip_id=str(slip.slip_id), placed_at=slip.timestamp, legs=legs))
+            built.append(
+                HistorySlip(
+                    slip_id=str(slip.slip_id),
+                    placed_at=slip.timestamp,
+                    legs=legs,
+                    forced=bool(slip.forced),
+                )
+            )
 
     report = build_public_history(built)
     return PublicHistoryOut(**report)

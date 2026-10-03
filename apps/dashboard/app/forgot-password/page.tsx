@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { AuthShell } from "@/components/AuthShell";
+import { useLandingLang } from "@/components/LandingLang";
 import { api } from "@/lib/api";
 
 export default function ForgotPasswordPage() {
+  const { t } = useLandingLang();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [resetLink, setResetLink] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export default function ForgotPasswordPage() {
       setMessage(res.message);
       if (res.reset_link) setResetLink(res.reset_link);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
+      setError(err instanceof Error ? err.message : t.requestFailed);
     } finally {
       setLoading(false);
     }
@@ -31,11 +33,11 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      title="Forgot password"
-      subtitle="We will send you a link to reset your password."
+      title={t.forgotTitle}
+      subtitle={t.forgotSub}
       footer={
         <>
-          <Link href="/login">Back to log in</Link>
+          <Link href="/login">{t.backLogin}</Link>
         </>
       }
     >
@@ -44,16 +46,16 @@ export default function ForgotPasswordPage() {
         {message ? <p className="banner info">{message}</p> : null}
         {resetLink ? (
           <p className="reset-link-box">
-            Reset link (dev):{" "}
+            {t.resetDev}:{" "}
             <a href={resetLink}>{resetLink}</a>
           </p>
         ) : null}
         <label>
-          Email
+          {t.email}
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <button type="submit" className="btn primary btn-block" disabled={loading}>
-          {loading ? "Sending…" : "Send reset link"}
+          {loading ? t.sending : t.sendReset}
         </button>
       </form>
     </AuthShell>

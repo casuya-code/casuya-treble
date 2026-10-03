@@ -1,33 +1,62 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, PublicHistory } from "@/lib/api";
+import { useLandingLang } from "@/components/LandingLang";
+import { api, HistoryLeg, HistorySlip, PublicHistory } from "@/lib/api";
+import { formatDay, formatMoney, formatStake } from "@/lib/landingCopy";
 
-function dayLabel(iso: string): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+function scoreText(leg: HistoryLeg): string {
+  if (leg.home_goals == null || leg.away_goals == null) return "—";
+  return `${leg.home_goals}–${leg.away_goals}`;
 }
 
-function profitLabel(value: number): string {
-  const text = Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (value > 0) return `+${text}`;
-  if (value < 0) return `−${text}`;
-  return "0";
+function uniqueLegs(slips: HistorySlip[]): HistoryLeg[] {
+  const seen = new Set<string>();
+  const legs: HistoryLeg[] = [];
+  for (const slip of slips) {
+    for (const leg of slip.legs) {
+      const key = `${leg.home_team}|${leg.away_team}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      legs.push(leg);
+    }
+  }
+  return legs;
 }
 
-function resultWord(result: string): string {
-  if (result === "won") return "Won";
-  if (result === "lost") return "Lost";
-  return "Waiting";
+function sharesALostLeg(slips: HistorySlip[]): boolean {
+  const counts = new Map<string, number>();
+  for (const slip of slips) {
+    for (const leg of slip.legs) {
+      if (leg.result !== "lost") continue;
+      const key = `${leg.home_team}|${leg.away_team}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  return [...counts.values()].some((count) => count > 1);
+}
+
+function MatchRow({ leg }: { leg: HistoryLeg }) {
+  const { t } = useLandingLang();
+  const word = leg.result === "won" ? t.Won : leg.result === "lost" ? t.Lost : t.Pending;
+  const tone = leg.result === "won" ? "pos" : leg.result === "lost" ? "neg" : "";
+  const name = `${leg.home_team} v ${leg.away_team}${leg.practice ? ` · ${t.practice}` : ""}`;
+
+  return (
+    <div className="row">
+      <span className="m">{name}</span>
+      <span className="o">{leg.odds.toFixed(2)}</span>
+      <span className="sc">{scoreText(leg)}</span>
+      <span className={`chip ${tone}`}>{word}</span>
+    </div>
+  );
 }
 
 export function PublicHistoryPanel() {
+  const { lang, t } = useLandingLang();
   const [history, setHistory] = useState<PublicHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,9 +68,10 @@ export function PublicHistoryPanel() {
         if (!cancelled) {
           setHistory(rows);
           setError(null);
+          setUpdatedAt(new Date());
         }
       } catch {
-        if (!cancelled) setError("Results are unavailable right now.");
+        if (!cancelled) setError("unavailable");
       }
     }
 
@@ -55,91 +85,117 @@ export function PublicHistoryPanel() {
     };
   }, []);
 
+  const dates = history?.days.map((day) => formatDay(day.date, lang)).join(", ") ?? "";
+  const stakeLine = history
+    ? `${t.stake.replaceAll("{s}", formatStake(history.stake))}${dates ? ` ${t.resultsFor.replace("{date}", dates)}` : ""}`
+    : "";
+  const updated = updatedAt
+    ? updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "";
+  const wonTone =
+    history && history.trebles_placed > 0 && history.trebles_won === history.trebles_placed
+      ? "pos"
+      : history && history.treble_profit < 0
+        ? "neg"
+        : "";
+
   return (
-    <section className="index-history" aria-label="Placed results">
-      <h2 className="index-section-title">Placed results</h2>
-      <p className="index-history-note index-history-lead">
-        Open to everyone. Stake is 2,000 on each match and 2,000 on each treble. The same three matches
-        appear once, even when more than one account placed them. The page refreshes on its own. A leg is won
-        once two goals are in. The score box fills in from BetPawa on its own. A leg is lost only when the match
-        finishes with fewer than two. Waiting matches stay out of the profit. A treble is lost as soon as one leg loses.
+    <section className="landing-wrap" id="results" aria-label={t.resT}>
+      <h2>{t.resT}</h2>
+      <p className="lead" style={{ marginTop: 4 }}>
+        {t.resP}
       </p>
-      {error ? <p className="banner error">{error}</p> : null}
-      {!history && !error ? <p className="index-history-note">Loading results…</p> : null}
-      {history && history.trebles_placed === 0 ? (
-        <p className="index-history-empty">No placed trebles yet. Mark a slip as placed and the result shows here.</p>
-      ) : null}
+      {history ? <p className="small" style={{ marginTop: 10 }}>{stakeLine}</p> : null}
+      {error ? <p className="note">{t.error}</p> : null}
+      {!history && !error ? <p className="small" style={{ marginTop: 12 }}>{t.loading}</p> : null}
+      {history && history.trebles_placed === 0 ? <p className="note">{t.empty}</p> : null}
       {history && history.trebles_placed > 0 ? (
         <>
-          <div className="index-history-totals">
-            <div>
-              <strong>{history.matches_won}</strong>
-              <span>Matches won</span>
+          <div className="group">{t.g1}</div>
+          <div className="tiles">
+            <div className="tile">
+              <span>{t.won}</span>
+              <b className={history.matches_won > 0 ? "pos" : undefined}>{history.matches_won}</b>
             </div>
-            <div>
-              <strong>{history.matches_lost}</strong>
-              <span>Matches lost</span>
+            <div className="tile">
+              <span>{t.lost}</span>
+              <b className={history.matches_lost > 0 ? "neg" : undefined}>{history.matches_lost}</b>
             </div>
-            <div>
-              <strong>{history.trebles_placed}</strong>
-              <span>Trebles placed</span>
-            </div>
-            <div>
-              <strong className={history.single_profit < 0 ? "down" : "up"}>{profitLabel(history.single_profit)}</strong>
-              <span>Single profit</span>
-            </div>
-            <div>
-              <strong className={history.treble_profit < 0 ? "down" : "up"}>{profitLabel(history.treble_profit)}</strong>
-              <span>Treble profit</span>
+            <div className="tile sub">
+              <span>{t.single}</span>
+              <b className={history.single_profit > 0 ? "pos" : history.single_profit < 0 ? "neg" : undefined}>
+                TZS {formatMoney(history.single_profit)}
+              </b>
             </div>
           </div>
-          <ul className="index-history-days">
-            {history.days.map((day) => (
-              <li key={day.date}>
-                <strong>{dayLabel(day.date)}</strong>
-                <span>
-                  Matches won {day.matches_won} · lost {day.matches_lost}
-                </span>
-                <span>Single profit {profitLabel(day.single_profit)}</span>
-                <span>
-                  Trebles placed {day.trebles_placed} · won {day.trebles_won} · lost {day.trebles_lost}
-                  {day.trebles_pending ? ` · waiting ${day.trebles_pending}` : ""}
-                </span>
-                <span>Treble profit {profitLabel(day.treble_profit)}</span>
-              </li>
-            ))}
-          </ul>
-          <ul className="index-history-slips">
-            {history.slips.map((slip) => (
-              <li key={slip.slip_id}>
-                <div className="index-history-slip-head">
-                  <strong>{dayLabel(slip.date)}</strong>
-                  <span className={`index-history-result ${slip.result}`}>{resultWord(slip.result)}</span>
-                  <span>{slip.combined_odds.toFixed(2)}</span>
-                </div>
-                <ul>
-                  {slip.legs.map((leg) => (
-                    <li key={`${slip.slip_id}-${leg.home_team}-${leg.away_team}`}>
-                      <span>
-                        {leg.home_team} v {leg.away_team}
-                        {leg.practice ? " · Practice" : ""}
+          {history.matches_pending > 0 ? (
+            <p className="small">
+              {t.waitingMatches}: {history.matches_pending}
+            </p>
+          ) : null}
+          <div className="single">
+            <div className="rows">
+              {uniqueLegs(history.slips).map((leg) => (
+                <MatchRow key={`${leg.home_team}-${leg.away_team}`} leg={leg} />
+              ))}
+            </div>
+          </div>
+
+          <div className="group">{t.g2}</div>
+          <div className="tiles">
+            <div className="tile">
+              <span>{t.placed}</span>
+              <b>{history.trebles_placed}</b>
+            </div>
+            <div className="tile">
+              <span>{t.tw}</span>
+              <b className={wonTone || undefined}>
+                {history.trebles_won} / {history.trebles_placed}
+              </b>
+            </div>
+            <div className="tile sub">
+              <span>{t.treble}</span>
+              <b className={history.treble_profit > 0 ? "pos" : history.treble_profit < 0 ? "neg" : undefined}>
+                TZS {formatMoney(history.treble_profit)}
+              </b>
+            </div>
+          </div>
+          <p className="note">{sharesALostLeg(history.slips) ? t.share : t.once}</p>
+          <div>
+            {history.slips.map((slip) => {
+              const word = slip.result === "won" ? t.Won : slip.result === "lost" ? t.Lost : t.Pending;
+              const badge = slip.result === "won" ? "won" : slip.result === "lost" ? "lost" : "wait";
+              return (
+                <details className="tr" key={slip.slip_id}>
+                  <summary>
+                    <span className="sum-left">
+                      <span className={`badge ${badge}`}>{word}</span>
+                      {slip.forced ? <span className="badge forced">{t.forced}</span> : null}
+                      <span className="sum-odds">{slip.combined_odds.toFixed(2)}</span>
+                      <span className="sum-odds">
+                        {slip.date
+                          .split("|")
+                          .map((day) => formatDay(day, lang))
+                          .join(" · ")}
                       </span>
-                      <span className="index-leg-meta">
-                        <span className="score-box" aria-label="Final score">
-                          {leg.home_goals != null && leg.away_goals != null
-                            ? `${leg.home_goals}–${leg.away_goals}`
-                            : "—"}
-                        </span>
-                        <span>
-                          {leg.odds.toFixed(2)} · {resultWord(leg.result)}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
+                    </span>
+                    <span className="chev" aria-hidden="true">
+                      ▾
+                    </span>
+                  </summary>
+                  <div className="rows">
+                    {slip.legs.map((leg) => (
+                      <MatchRow key={`${slip.slip_id}-${leg.home_team}-${leg.away_team}`} leg={leg} />
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+          <p className="note">{t.warn}</p>
+          <p className="small">
+            {t.auto} {updated ? `${t.lu} ${updated}` : ""}
+          </p>
         </>
       ) : null}
     </section>

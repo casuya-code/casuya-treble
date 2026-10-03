@@ -4,11 +4,13 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/AuthShell";
+import { useLandingLang } from "@/components/LandingLang";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useLandingLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -18,7 +20,7 @@ export default function RegisterPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t.passwordsMismatch);
       return;
     }
     setLoading(true);
@@ -28,7 +30,7 @@ export default function RegisterPage() {
       setToken(res.access_token);
       router.replace("/desk");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : t.registerFailed);
     } finally {
       setLoading(false);
     }
@@ -36,22 +38,22 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Create account"
-      subtitle="Free account for Casuya Treble."
+      title={t.createTitle}
+      subtitle={t.createSub}
       footer={
         <>
-          Already have an account? <Link href="/login">Log in</Link>
+          {t.alreadyHave} <Link href="/login">{t.logIn}</Link>
         </>
       }
     >
       <form className="auth-form" onSubmit={onSubmit}>
         {error ? <p className="banner error">{error}</p> : null}
         <label>
-          Email
+          {t.email}
           <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label>
-          Password (min 8 characters)
+          {t.passwordHint}
           <input
             type="password"
             required
@@ -62,7 +64,7 @@ export default function RegisterPage() {
           />
         </label>
         <label>
-          Confirm password
+          {t.confirmPassword}
           <input
             type="password"
             required
@@ -73,7 +75,7 @@ export default function RegisterPage() {
           />
         </label>
         <button type="submit" className="btn primary btn-block" disabled={loading}>
-          {loading ? "Creating…" : "Create account"}
+          {loading ? t.creating : t.create}
         </button>
       </form>
     </AuthShell>

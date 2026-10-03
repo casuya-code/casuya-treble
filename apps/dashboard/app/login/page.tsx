@@ -4,11 +4,13 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthShell } from "@/components/AuthShell";
+import { useLandingLang } from "@/components/LandingLang";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useLandingLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export default function LoginPage() {
       setToken(res.access_token);
       router.replace("/desk");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t.loginFailed);
     } finally {
       setLoading(false);
     }
@@ -31,24 +33,24 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Log in"
-      subtitle="Access your trebles and BetPawa tracking."
+      title={t.loginTitle}
+      subtitle={t.loginSub}
       footer={
         <>
-          <Link href="/register">Create account</Link>
+          <Link href="/register">{t.create}</Link>
           <span> · </span>
-          <Link href="/forgot-password">Forgot password?</Link>
+          <Link href="/forgot-password">{t.forgot}</Link>
         </>
       }
     >
       <form className="auth-form" onSubmit={onSubmit}>
         {error ? <p className="banner error">{error}</p> : null}
         <label>
-          Email
+          {t.email}
           <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label>
-          Password
+          {t.password}
           <input
             type="password"
             required
@@ -58,7 +60,7 @@ export default function LoginPage() {
           />
         </label>
         <button type="submit" className="btn primary btn-block" disabled={loading}>
-          {loading ? "Signing in…" : "Log in"}
+          {loading ? t.signingIn : t.logIn}
         </button>
       </form>
     </AuthShell>

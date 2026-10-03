@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from shared.models import Fixture, MatchStatus, SlipStatus
 from shared.public_history import HistoryLeg, HistorySlip, build_public_history
-from shared.tracker_logic import slip_status_from_fixtures
+from shared.tracker_logic import fixtures_for_legs, slip_status_from_fixtures
 
 
 def _leg(name: str, hour: int, odds: float, goals: tuple[int, int] | None, fixture_id: str | None = None) -> HistoryLeg:
@@ -107,6 +107,36 @@ def test_two_goals_win_before_full_time_and_nil_nil_does_not():
     assert report["trebles_pending"] == 1
     assert report["slips"][0]["legs"][0]["result"] == "won"
     assert report["slips"][0]["legs"][1]["result"] == "pending"
+
+
+def test_forced_label_stays_on_the_public_slip():
+    legs = [_leg("One", 12, 1.40, (2, 0), "a"), _leg("Two", 13, 1.40, (1, 1), "b"), _leg("Three", 14, 1.40, (0, 0), "c")]
+    plain = HistorySlip("plain", datetime(2026, 10, 2, 8, 0, tzinfo=timezone.utc), legs)
+    forced = HistorySlip("forced", datetime(2026, 10, 2, 9, 0, tzinfo=timezone.utc), legs, forced=True)
+    report = build_public_history([plain, forced])
+    assert report["slips"][0]["forced"] is True
+    assert report["treble_profit"] == -2000
+
+
+def test_missing_match_is_left_unset():
+    class Leg:
+        fixture_id = "gone"
+
+    assert fixtures_for_legs([Leg()], {}) is None
+
+
+def test_slip_label_keeps_every_match_date():
+    early = _leg("Early", 12, 1.50, (0, 0), "early")
+    late = _leg("Late", 22, 1.50, (2, 0), "late")
+    late.kickoff_at = datetime(2026, 10, 2, 22, 0, tzinfo=timezone.utc)
+    next_day = _leg("Next", 12, 1.50, (1, 1), "next")
+    next_day.kickoff_at = datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)
+    report = build_public_history(
+        [HistorySlip("span", datetime(2026, 10, 2, 8, 0, tzinfo=timezone.utc), [early, late, next_day])]
+    )
+    assert report["slips"][0]["date"] == "2026-10-02|2026-10-03"
+    assert report["treble_profit"] == -2000
+    assert sum(row["treble_profit"] for row in report["days"]) == -2000
 
 
 def test_desk_slip_follows_the_same_goal_rule():
