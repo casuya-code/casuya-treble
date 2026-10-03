@@ -114,11 +114,11 @@ export function PublicHistoryPanel() {
           <div className="group">{t.g1}</div>
           <div className="tiles">
             <div className="tile">
-              <span>{t.won}</span>
+              <span>{t.matchesWon}</span>
               <b className={history.matches_won > 0 ? "pos" : undefined}>{history.matches_won}</b>
             </div>
             <div className="tile">
-              <span>{t.lost}</span>
+              <span>{t.matchesLost}</span>
               <b className={history.matches_lost > 0 ? "neg" : undefined}>{history.matches_lost}</b>
             </div>
             <div className="tile sub">
@@ -144,7 +144,7 @@ export function PublicHistoryPanel() {
           <div className="group">{t.g2}</div>
           <div className="tiles">
             <div className="tile">
-              <span>{t.placed}</span>
+              <span>{t.treblesPlaced}</span>
               <b>{history.trebles_placed}</b>
             </div>
             <div className="tile">

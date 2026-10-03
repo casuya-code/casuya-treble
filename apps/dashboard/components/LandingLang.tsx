@@ -3,7 +3,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { COPY, Lang, SHELL } from "@/lib/landingCopy";
 
-type Messages = (typeof COPY)["en"] & (typeof SHELL)["en"];
+type AsStrings<T> = { [K in keyof T]: string };
+type Messages = AsStrings<(typeof COPY)["en"]> & AsStrings<(typeof SHELL)["en"]>;
 
 type LandingLangValue = {
   lang: Lang;
