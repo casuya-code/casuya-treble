@@ -7,6 +7,10 @@ from shared.models import Fixture, TimeCategory
 from shared.poisson import prob_over_15
 from shared.time_buckets import local_day
 
+# A leg must clear both bars before it can sit on a treble.
+MIN_LEG_PROBABILITY = 0.85
+MIN_LEG_ODDS = 1.20
+
 
 @dataclass
 class CandidateLeg:
@@ -25,14 +29,17 @@ class TrebleCandidate:
     forced: bool = False
 
 
-def _leg_from_fixture(fixture: Fixture) -> CandidateLeg | None:
+def _leg_from_fixture(fixture: Fixture, *, priced_only: bool = False) -> CandidateLeg | None:
     odds = fixture.closing_odds_over_15 or fixture.opening_odds_over_15
     if not odds or odds <= 1.0:
+        return None
+    probability = prob_over_15(fixture.lambda_home, fixture.lambda_away)
+    if not priced_only and (odds < MIN_LEG_ODDS or probability < MIN_LEG_PROBABILITY):
         return None
     return CandidateLeg(
         fixture_id=fixture.id,
         odds=odds,
-        model_probability=prob_over_15(fixture.lambda_home, fixture.lambda_away),
+        model_probability=probability,
         kickoff_day=local_day(fixture.kickoff_at),
     )
 
@@ -78,20 +85,24 @@ def find_best_trebles(
 
 
 def count_priced_legs(fixtures: list[Fixture]) -> int:
+    return sum(1 for fixture in fixtures if _leg_from_fixture(fixture, priced_only=True) is not None)
+
+
+def count_eligible_legs(fixtures: list[Fixture]) -> int:
     return sum(1 for fixture in fixtures if _leg_from_fixture(fixture) is not None)
 
 
 def busiest_day_count(fixtures: list[Fixture]) -> int:
     counts: dict[date, int] = {}
     for fixture in fixtures:
-        leg = _leg_from_fixture(fixture)
+        leg = _leg_from_fixture(fixture, priced_only=True)
         if leg is None:
             continue
         counts[leg.kickoff_day] = counts.get(leg.kickoff_day, 0) + 1
     return max(counts.values(), default=0)
 
 
-def empty_treble_reason(*, stored: int, upcoming: int, priced: int, same_day: int) -> str:
+def empty_treble_reason(*, stored: int, upcoming: int, priced: int, same_day: int, eligible: int = 0) -> str:
     """Why generate found no treble. The desk turns the code into a sentence."""
     if stored == 0:
         return "none_loaded"
@@ -101,4 +112,6 @@ def empty_treble_reason(*, stored: int, upcoming: int, priced: int, same_day: in
         return "no_price"
     if priced < 3 or same_day < 3:
         return "spread_days" if priced >= 3 else "too_few"
+    if eligible < 3:
+        return "below_floor"
     return "below_min"

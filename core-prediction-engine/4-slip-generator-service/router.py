@@ -22,7 +22,14 @@ from shared.config import settings
 from shared.fixture_source import is_demo_fixture, prefer_real_fixtures, upcoming_fixtures
 from shared.practice_cleanup import purge_practice_if_real_loaded
 from shared.tracker_logic import recompute_all_slip_statuses, recompute_slip_statuses_for_user
-from shared.treble_generator import busiest_day_count, count_priced_legs, empty_treble_reason, find_best_trebles
+from shared.treble_generator import (
+    busiest_day_count,
+    count_eligible_legs,
+    count_priced_legs,
+    empty_treble_reason,
+    find_best_trebles,
+)
+from shared.team_strength import apply_form_lambdas
 
 router = APIRouter(prefix="/slips", tags=["slip-generator"])
 
@@ -91,8 +98,10 @@ async def generate_slips(
     all_fixtures = list(result.scalars().all())
     upcoming = upcoming_fixtures(all_fixtures)
     fixtures = prefer_real_fixtures(upcoming)
+    apply_form_lambdas(fixtures, [row for row in all_fixtures if row.home_goals is not None])
     trebles = find_best_trebles(fixtures, min_combined_odds=min_odds, limit=max_slips)
     priced = count_priced_legs(fixtures)
+    eligible = count_eligible_legs(fixtures)
     same_day = busiest_day_count(fixtures)
     if not trebles:
         return GenerateResult(
@@ -102,6 +111,7 @@ async def generate_slips(
                 upcoming=len(fixtures),
                 priced=priced,
                 same_day=same_day,
+                eligible=eligible,
             ),
             stored=len(all_fixtures),
             upcoming=len(fixtures),

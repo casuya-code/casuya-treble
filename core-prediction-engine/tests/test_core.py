@@ -26,8 +26,8 @@ def test_find_trebles_respects_min_odds():
                 home_team=f"H{i}",
                 away_team=f"A{i}",
                 kickoff_at=kick,
-                lambda_home=1.6,
-                lambda_away=1.0,
+                lambda_home=2.2,
+                lambda_away=1.8,
                 closing_odds_over_15=odds,
             )
         )
@@ -40,7 +40,7 @@ def test_find_trebles_respects_min_odds():
 
 def test_short_treble_is_offered_as_forced():
     kick = datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc)
-    prices = [1.44, 1.44, 1.44, 1.20]
+    prices = [1.44, 1.44, 1.44, 1.22]
     fixtures = []
     for i, odds in enumerate(prices):
         fixtures.append(
@@ -49,8 +49,8 @@ def test_short_treble_is_offered_as_forced():
                 home_team=f"H{i}",
                 away_team=f"A{i}",
                 kickoff_at=kick,
-                lambda_home=1.6,
-                lambda_away=1.0,
+                lambda_home=2.2,
+                lambda_away=1.8,
                 closing_odds_over_15=odds,
             )
         )
@@ -78,8 +78,8 @@ def test_treble_uses_one_calendar_day():
                 home_team=f"H{i}",
                 away_team=f"A{i}",
                 kickoff_at=kick,
-                lambda_home=1.6,
-                lambda_away=1.0,
+                lambda_home=2.2,
+                lambda_away=1.8,
                 closing_odds_over_15=1.5,
             )
         )
@@ -99,7 +99,43 @@ def test_empty_treble_reason_names_the_gap():
     assert empty_treble_reason(stored=8, upcoming=8, priced=0, same_day=0) == "no_price"
     assert empty_treble_reason(stored=8, upcoming=2, priced=2, same_day=2) == "too_few"
     assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=2) == "spread_days"
-    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=8) == "below_min"
+    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=8, eligible=8) == "below_min"
+    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=8, eligible=1) == "below_floor"
+
+
+def test_low_chance_or_short_price_is_left_out():
+    kick = datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc)
+    weak = Fixture(
+        id=uuid4(),
+        home_team="Quiet",
+        away_team="Defence",
+        kickoff_at=kick,
+        lambda_home=0.8,
+        lambda_away=0.6,
+        closing_odds_over_15=1.40,
+    )
+    short_price = Fixture(
+        id=uuid4(),
+        home_team="Hot",
+        away_team="Favourite",
+        kickoff_at=kick,
+        lambda_home=2.2,
+        lambda_away=1.8,
+        closing_odds_over_15=1.12,
+    )
+    from shared.treble_generator import count_eligible_legs, count_priced_legs
+
+    assert count_priced_legs([weak, short_price]) == 2
+    assert count_eligible_legs([weak, short_price]) == 0
+
+
+def test_dixon_coles_raises_the_chance_of_a_goalless_draw():
+    from shared.poisson import scoreline_probabilities
+
+    adjusted = scoreline_probabilities(1.3, 1.0)
+    independent = scoreline_probabilities(1.3, 1.0, rho=0.0)
+    assert adjusted[(0, 0)] > independent[(0, 0)]
+    assert adjusted[(1, 1)] > independent[(1, 1)]
 
 
 def test_upcoming_fixtures_skip_started_matches():

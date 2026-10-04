@@ -37,6 +37,7 @@ function trebleGapMessage(
     noTrebleFew: string;
     noTrebleSpread: string;
     noTrebleOdds: string;
+    noTrebleFloor: string;
     noTrebleAdmin: string;
   },
   isAdmin: boolean,
@@ -53,6 +54,8 @@ function trebleGapMessage(
             ? fill(t.noTrebleFew, counts)
             : result.reason === "spread_days"
               ? fill(t.noTrebleSpread, counts)
+            : result.reason === "below_floor"
+              ? t.noTrebleFloor
               : fill(t.noTrebleOdds, counts);
   if (isAdmin && (result.reason === "none_loaded" || result.reason === "all_started")) {
     return `${text} ${t.noTrebleAdmin}`;

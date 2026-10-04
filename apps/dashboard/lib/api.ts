@@ -38,7 +38,7 @@ export interface Slip {
 
 export type GenerateResult = {
   slips: Slip[];
-  reason: "none_loaded" | "all_started" | "no_price" | "too_few" | "spread_days" | "below_min" | null;
+  reason: "none_loaded" | "all_started" | "no_price" | "too_few" | "spread_days" | "below_floor" | "below_min" | null;
   stored: number;
   upcoming: number;
   priced: number;
