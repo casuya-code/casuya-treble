@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
@@ -9,9 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared.betpawa_client import BetPawaError, fetch_football_over_15
 from shared.config import settings
 from shared.database import get_db
+from shared.football_data import HistoricalSeedResult, ensure_historical_scores, import_football_data
 from shared.models import Fixture
 from shared.practice_cleanup import purge_practice_data
 from shared.schemas import FixtureCreate, FixtureOut
+
+logger = logging.getLogger("casuya.ingestion")
 
 router = APIRouter(prefix="/ingestion", tags=["data-ingestion"])
 
@@ -31,6 +35,15 @@ class BetPawaImportResult(BaseModel):
     skipped_no_market: int
     events_fetched: int
     practice_removed: int
+    history_imported: int = 0
+    history_updated: int = 0
+
+
+class HistoricalImportResult(BaseModel):
+    imported: int
+    updated: int
+    files: int
+    skipped: bool = False
 
 
 @router.get("/betpawa/status", response_model=BetPawaSourceStatus)
@@ -85,12 +98,37 @@ async def import_from_betpawa(
             imported += 1
 
     await db.commit()
+    history = HistoricalSeedResult()
+    try:
+        history = await ensure_historical_scores(db)
+    except Exception:
+        logger.exception("historical score seed failed")
+        await db.rollback()
     return BetPawaImportResult(
         imported=imported,
         updated=updated,
         skipped_no_market=0,
         events_fetched=len(rows),
         practice_removed=practice_removed,
+        history_imported=history.imported,
+        history_updated=history.updated,
+    )
+
+
+@router.post("/import/football-data", response_model=HistoricalImportResult)
+async def import_historical_scores(db: AsyncSession = Depends(get_db)) -> HistoricalImportResult:
+    """Load finished league scores used to rate attack and defence."""
+    try:
+        history = await import_football_data(db)
+    except Exception as exc:
+        logger.exception("historical score seed failed")
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="Historical scores are unavailable") from exc
+    return HistoricalImportResult(
+        imported=history.imported,
+        updated=history.updated,
+        files=history.files,
+        skipped=history.skipped,
     )
 
 

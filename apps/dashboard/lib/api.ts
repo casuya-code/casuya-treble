@@ -170,6 +170,8 @@ export const api = {
       updated: number;
       events_fetched: number;
       practice_removed: number;
+      history_imported?: number;
+      history_updated?: number;
     }>(
       `/ingestion/import/betpawa${q ? `?${q}` : ""}`,
       { method: "POST" }

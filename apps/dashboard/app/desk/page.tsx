@@ -146,8 +146,10 @@ function DeskPage() {
         if (cancelled) return;
         const cleared =
           imported.practice_removed > 0 ? ` ${fill(t.practiceRemoved, { n: imported.practice_removed })}` : "";
+        const historyCount = (imported.history_imported ?? 0) + (imported.history_updated ?? 0);
+        const history = historyCount > 0 ? ` ${fill(t.historyAdded, { n: historyCount })}` : "";
         const again = session.admin ? ` ${t.importAgain}` : "";
-        setInfo(`${fill(t.betpawaUpdated, { n: imported.events_fetched })}${cleared}${again}`);
+        setInfo(`${fill(t.betpawaUpdated, { n: imported.events_fetched })}${cleared}${history}${again}`);
         const retention = await api.retentionDays();
         if (cancelled) return;
         setSlips(await api.listSlips({ days: retention.retention_days }));

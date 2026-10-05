@@ -3,6 +3,8 @@
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
+from shared.league_names import league_key
+from shared.team_names import team_key
 from shared.time_buckets import local_day
 
 HALF_LIFE_DAYS = 21
@@ -33,19 +35,30 @@ def estimate_match_lambdas(
 ) -> tuple[float, float] | None:
     """λ home and λ away from attack and defence strengths. None when the sample is too thin."""
     today = today or datetime.now(NAIROBI).date()
+    wanted = league_key(league)
+    home_key = team_key(home_team)
+    away_key = team_key(away_team)
     finished = []
+    seen: set[tuple[str, str, str]] = set()
     for match in matches:
         if match.home_goals is None or match.away_goals is None:
             continue
-        if league and match.league != league:
+        if wanted:
+            if league_key(match.league) != wanted:
+                continue
+        elif league and match.league != league:
             continue
+        stamp = (team_key(match.home_team), team_key(match.away_team), local_day(match.kickoff_at).isoformat())
+        if stamp in seen:
+            continue
+        seen.add(stamp)
         finished.append(match)
     if len(finished) < MIN_LEAGUE_GAMES:
         return None
 
     finished.sort(key=lambda match: local_day(match.kickoff_at), reverse=True)
-    home_games = [match for match in finished if match.home_team == home_team][:12]
-    away_games = [match for match in finished if match.away_team == away_team][:12]
+    home_games = [match for match in finished if team_key(match.home_team) == home_key][:12]
+    away_games = [match for match in finished if team_key(match.away_team) == away_key][:12]
     if len(home_games) < MIN_VENUE_GAMES or len(away_games) < MIN_VENUE_GAMES:
         return None
 
