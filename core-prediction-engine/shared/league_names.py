@@ -12,6 +12,7 @@ _LEAGUES = (
     ("ligue1", {"france"}, ("ligue 1", "ligue1")),
     ("eredivisie", {"netherlands", "holland"}, ("eredivisie",)),
     ("primeira", {"portugal"}, ("liga portugal", "primeira liga", "primeira")),
+    ("argentina", {"argentina"}, ("liga profesional", "primera division")),
 )
 
 
@@ -25,6 +26,8 @@ def league_key(label: str | None) -> str | None:
     competition = parts[-1]
     region = parts[-2]
     if region == "football":
+        return None
+    if "reserve" in competition:
         return None
     if "2." in competition or competition.startswith("2") or "segunda" in competition or "serie b" in competition:
         return None

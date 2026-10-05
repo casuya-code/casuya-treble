@@ -23,6 +23,7 @@ _STOP = {
     "ado",
     "rb",
     "rc",
+    "ca",
 }
 _TAIL = {"city", "town", "county", "hotspur", "wanderers", "albion", "united", "utd"}
 
@@ -87,6 +88,31 @@ _ALIASES = {
     "nec nijmegen": "nijmegen",
     "inter milan": "inter",
     "internazionale": "inter",
+    "argentinos jrs": "argentinos juniors",
+    "argentinos juniors": "argentinos juniors",
+    "atl tucuman": "atletico tucuman",
+    "atletico tucuman": "atletico tucuman",
+    "estudiantes l p": "estudiantes",
+    "estudiantes de la plata": "estudiantes",
+    "estudiantes la plata": "estudiantes",
+    "san martin s j": "san martin san juan",
+    "san martin san juan": "san martin san juan",
+    "dep riestra": "deportivo riestra",
+    "deportivo riestra": "deportivo riestra",
+    "ind rivadavia": "independiente rivadavia",
+    "independiente rivadavia": "independiente rivadavia",
+    "gimnasia l p": "gimnasia la plata",
+    "gimnasia la plata": "gimnasia la plata",
+    "gimnasia y esgrima la plata": "gimnasia la plata",
+    "talleres cordoba": "talleres",
+    "talleres": "talleres",
+    "sarmiento junin": "sarmiento",
+    "sarmiento": "sarmiento",
+    "central cordoba": "central cordoba",
+    "central cordoba santiago": "central cordoba",
+    "instituto cordoba": "instituto",
+    "colon santa fe": "colon",
+    "colon": "colon",
 }
 
 

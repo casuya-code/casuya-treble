@@ -18,6 +18,7 @@ class CandidateLeg:
     odds: float
     model_probability: float
     kickoff_day: date
+    market: str = "Over 1.5 Goals"
 
 
 @dataclass

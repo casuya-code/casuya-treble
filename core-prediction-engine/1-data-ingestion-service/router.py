@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
@@ -7,10 +8,17 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.betpawa_client import BetPawaError, fetch_football_over_15
+from shared.betpawa_client import (
+    BetPawaError,
+    extract_fh_corner_overs,
+    fetch_event_payload,
+    fetch_football_over_15,
+    sportradar_match_id,
+)
 from shared.config import settings
 from shared.database import get_db
 from shared.football_data import HistoricalSeedResult, ensure_historical_scores, import_football_data
+from shared.league_names import league_key
 from shared.models import Fixture
 from shared.practice_cleanup import purge_practice_data
 from shared.schemas import FixtureCreate, FixtureOut
@@ -20,6 +28,35 @@ logger = logging.getLogger("casuya.ingestion")
 router = APIRouter(prefix="/ingestion", tags=["data-ingestion"])
 
 NAIROBI = ZoneInfo("Africa/Nairobi")
+
+
+async def _store_corner_prices(db, external_ids: list[str]) -> None:
+    """Save BetPawa's first-half 2.5 and 3.5 corner prices on rated matches."""
+    if not external_ids:
+        return
+    result = await db.execute(select(Fixture).where(Fixture.external_id.in_(external_ids)))
+    fixtures = list(result.scalars())
+    gate = asyncio.Semaphore(5)
+
+    async def one(fixture: Fixture) -> None:
+        event_id = (fixture.external_id or "").split(":", 1)[-1]
+        async with gate:
+            try:
+                payload = await fetch_event_payload(event_id)
+            except BetPawaError:
+                logger.warning("corner prices unavailable for %s", fixture.external_id)
+                return
+        if payload is None:
+            return
+        prices = extract_fh_corner_overs(payload)
+        fixture.fh_corner_over_25 = prices.get("2.5")
+        fixture.fh_corner_over_35 = prices.get("3.5")
+        match_id = sportradar_match_id(payload)
+        if match_id:
+            fixture.sportradar_id = match_id
+
+    await asyncio.gather(*[one(fixture) for fixture in fixtures])
+    await db.commit()
 
 
 class BetPawaSourceStatus(BaseModel):
@@ -98,6 +135,11 @@ async def import_from_betpawa(
             imported += 1
 
     await db.commit()
+    try:
+        await _store_corner_prices(db, [row.external_id for row in rows if league_key(row.league)])
+    except Exception:
+        logger.exception("corner price fetch failed")
+        await db.rollback()
     history = HistoricalSeedResult()
     try:
         history = await ensure_historical_scores(db)

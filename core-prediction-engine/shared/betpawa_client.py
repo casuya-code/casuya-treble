@@ -5,15 +5,22 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 import httpx
 
 from shared.config import settings
+from shared.league_names import league_key
 
 OVER_UNDER_FT_MARKET = "5000"
+FH_CORNERS_MARKET = "1096784"
 TOTAL_GOALS_LINE = "1.5"
+CORNER_LINES = ("2.5", "3.5")
+NEAR_DAYS = 2
+RATED_DAYS = 7
+PAGE_SIZE = 60
+MAX_PAGES = 8
 
 
 @dataclass
@@ -32,6 +39,7 @@ class BetPawaScore:
     home_goals: int
     away_goals: int
     live: bool
+    sportradar_id: str | None = None
 
 
 class BetPawaError(Exception):
@@ -104,10 +112,11 @@ def _extract_over_15_odds(event: dict) -> float | None:
             if str(total) != TOTAL_GOALS_LINE:
                 continue
             for price in row.get("prices") or []:
-                if price.get("name") == "Over":
-                    odds = float(price["odds"])
-                    if odds > 1.0:
-                        return round(odds, 3)
+                if price.get("name") != "Over" or price.get("odds") is None:
+                    continue
+                odds = float(price["odds"])
+                if odds > 1.0:
+                    return round(odds, 3)
     return None
 
 
@@ -168,26 +177,118 @@ def _build_list_query(*, take: int, skip: int, popular_only: bool) -> str:
     return quote(json.dumps(body, separators=(",", ":")))
 
 
+def extract_fh_corner_overs(event: dict) -> dict[str, float]:
+    """First-half corner Over prices for 2.5 and 3.5, when BetPawa lists them."""
+    found: dict[str, float] = {}
+    for market in event.get("markets") or []:
+        market_type = market.get("marketType") or {}
+        name = str(market_type.get("name") or "")
+        if str(market_type.get("id")) != FH_CORNERS_MARKET and "Total Corners Over/Under - 1H" not in name:
+            continue
+        for row in market.get("row") or []:
+            total = str((row.get("specifier") or {}).get("total") or "")
+            if total not in CORNER_LINES:
+                continue
+            for price in row.get("prices") or []:
+                if price.get("name") != "Over" or price.get("odds") is None:
+                    continue
+                odds = float(price["odds"])
+                if odds > 1.0:
+                    found[total] = round(odds, 3)
+    return found
+
+
+def sportradar_match_id(payload: dict) -> str | None:
+    """Match id for the public corner timeline. In-play id wins over the pre-match one."""
+    chosen: str | None = None
+    for widget in payload.get("widgets") or []:
+        if not isinstance(widget, dict) or widget.get("type") != "SPORTRADAR" or not widget.get("id"):
+            continue
+        chosen = str(widget["id"])
+        if widget.get("retention") == "INPLAY":
+            return chosen
+    return chosen
+
+
+async def fetch_event_payload(event_id: str) -> dict | None:
+    url = (
+        f"{settings.betpawa_base_url.rstrip('/')}/api/sportsbook/v4/events/{event_id}"
+        f"?brand={settings.betpawa_brand}"
+    )
+    async with httpx.AsyncClient(timeout=25.0) as client:
+        response = await client.get(url, headers=_headers())
+        if response.status_code == 404:
+            return None
+        if response.status_code != 200:
+            raise BetPawaError(f"BetPawa HTTP {response.status_code}: {response.text[:240]}")
+        payload = response.json()
+    if not isinstance(payload, dict) or payload.get("error"):
+        return None
+    return payload
+
+
+async def fetch_fh_corner_overs(event_id: str) -> dict[str, float]:
+    payload = await fetch_event_payload(event_id)
+    if payload is None:
+        raise BetPawaError("BetPawa event not found")
+    return extract_fh_corner_overs(payload)
+
+
+def keep_for_import(row: BetPawaOver15, now: datetime | None = None) -> bool:
+    """Keep the next two days, and any rated league up to a week ahead."""
+    moment = now or datetime.now(timezone.utc)
+    kickoff = row.kickoff_at
+    if kickoff.tzinfo is None:
+        kickoff = kickoff.replace(tzinfo=timezone.utc)
+    if kickoff <= moment:
+        return False
+    if league_key(row.league) and kickoff <= moment + timedelta(days=RATED_DAYS):
+        return True
+    return kickoff <= moment + timedelta(days=NEAR_DAYS)
+
+
+async def _fetch_page(*, take: int, skip: int, popular_only: bool) -> list[BetPawaOver15]:
+    q = _build_list_query(take=take, skip=skip, popular_only=popular_only)
+    url = f"{settings.betpawa_base_url.rstrip('/')}/api/sportsbook/v4/events/lists/by-queries?q={q}"
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        response = await client.get(url, headers=_headers())
+        if response.status_code != 200:
+            raise BetPawaError(f"BetPawa HTTP {response.status_code}: {response.text[:240]}")
+        payload = response.json()
+    if isinstance(payload, dict) and payload.get("error"):
+        raise BetPawaError(f"BetPawa API error: {payload.get('error')}")
+    return parse_events_payload(payload)
+
+
 async def fetch_football_over_15(
     *,
     take: int | None = None,
     skip: int = 0,
     popular_only: bool = False,
 ) -> list[BetPawaOver15]:
-    take_n = take if take is not None else settings.betpawa_fetch_take
-    q = _build_list_query(take=take_n, skip=skip, popular_only=popular_only)
-    url = f"{settings.betpawa_base_url.rstrip('/')}/api/sportsbook/v4/events/lists/by-queries?q={q}"
+    """Upcoming Over 1.5 prices. The default read also keeps rated leagues a week ahead."""
+    if take is not None or skip or popular_only:
+        take_n = take if take is not None else settings.betpawa_fetch_take
+        return await _fetch_page(take=take_n, skip=skip, popular_only=popular_only)
 
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        response = await client.get(url, headers=_headers())
-        if response.status_code != 200:
-            raise BetPawaError(f"BetPawa HTTP {response.status_code}: {response.text[:240]}")
-        payload = response.json()
-
-    if isinstance(payload, dict) and payload.get("error"):
-        raise BetPawaError(f"BetPawa API error: {payload.get('error')}")
-
-    return parse_events_payload(payload)
+    now = datetime.now(timezone.utc)
+    chosen: list[BetPawaOver15] = []
+    seen: set[str] = set()
+    for page in range(MAX_PAGES):
+        rows = await _fetch_page(take=PAGE_SIZE, skip=page * PAGE_SIZE, popular_only=False)
+        if not rows:
+            break
+        latest = max(row.kickoff_at for row in rows)
+        if latest.tzinfo is None:
+            latest = latest.replace(tzinfo=timezone.utc)
+        for row in rows:
+            if row.external_id in seen or not keep_for_import(row, now):
+                continue
+            seen.add(row.external_id)
+            chosen.append(row)
+        if len(rows) < PAGE_SIZE or latest > now + timedelta(days=RATED_DAYS):
+            break
+    return chosen
 
 
 def parse_event_score(payload: dict) -> BetPawaScore | None:
@@ -216,18 +317,16 @@ def parse_event_score(payload: dict) -> BetPawaScore | None:
                 away = goals
     if home is None or away is None:
         return None
-    return BetPawaScore(home_goals=home, away_goals=away, live=live)
+    return BetPawaScore(
+        home_goals=home,
+        away_goals=away,
+        live=live,
+        sportradar_id=sportradar_match_id(payload),
+    )
 
 
 async def fetch_event_score(event_id: str) -> BetPawaScore | None:
-    url = f"{settings.betpawa_base_url.rstrip('/')}/api/sportsbook/v4/events/{event_id}"
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        response = await client.get(url, headers=_headers())
-        if response.status_code == 404:
-            return None
-        if response.status_code != 200:
-            raise BetPawaError(f"BetPawa HTTP {response.status_code}: {response.text[:240]}")
-        payload = response.json()
-    if not isinstance(payload, dict) or payload.get("error"):
+    payload = await fetch_event_payload(event_id)
+    if payload is None:
         return None
     return parse_event_score(payload)

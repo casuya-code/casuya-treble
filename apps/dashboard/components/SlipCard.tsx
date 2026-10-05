@@ -7,11 +7,31 @@ import { Slip, SlipLeg } from "@/lib/api";
 import { edgeLabel, kickoffLocal, pct, slipCreatedLocal, slipDates } from "@/lib/format";
 import { formatDay } from "@/lib/landingCopy";
 
+function cornerLine(market: string): number | null {
+  const match = market.match(/(\d+(?:\.\d+)?)/);
+  return match ? Number(match[1]) : null;
+}
+
 function legKind(leg: SlipLeg): StatusKind {
+  if (leg.market.toLowerCase().includes("corner")) {
+    const line = cornerLine(leg.market);
+    if (leg.fh_corners == null || line == null) return "PENDING";
+    if (leg.fh_corners > line) return "WON";
+    if (leg.fh_half_complete || leg.match_finished) return "LOST";
+    return "PENDING";
+  }
   if (leg.home_goals == null || leg.away_goals == null) return "PENDING";
   if (leg.home_goals + leg.away_goals >= 2) return "WON";
   if (leg.match_finished) return "LOST";
   return "PENDING";
+}
+
+function legScore(leg: SlipLeg): string {
+  if (leg.market.toLowerCase().includes("corner")) {
+    return leg.fh_corners == null ? "—" : String(leg.fh_corners);
+  }
+  if (leg.home_goals != null && leg.away_goals != null) return `${leg.home_goals}–${leg.away_goals}`;
+  return "—";
 }
 
 function trebleKind(slip: Slip): StatusKind {
@@ -102,7 +122,7 @@ export function SlipCard({ slip, featured, copied, loading, onCopy, onTogglePlac
                 {leg.is_demo ? (
                   <span className="leg-demo-tag">{t.practiceTag}</span>
                 ) : null}
-                {kickoffLocal(leg.kickoff_at, lang)} · Over 1.5 @ {leg.leg_odds.toFixed(2)}
+                {kickoffLocal(leg.kickoff_at, lang)} · {leg.market} @ {leg.leg_odds.toFixed(2)}
                 {leg.league && !leg.is_demo ? ` · ${leg.league}` : null}
               </span>
               <button
@@ -119,7 +139,7 @@ export function SlipCard({ slip, featured, copied, loading, onCopy, onTogglePlac
             </div>
             <div className="leg-side">
               <span className="score-box" aria-label={t.score}>
-                {leg.home_goals != null && leg.away_goals != null ? `${leg.home_goals}–${leg.away_goals}` : "—"}
+                {legScore(leg)}
               </span>
               <StatusBadge kind={legKind(leg)} className="result-badge" />
             </div>

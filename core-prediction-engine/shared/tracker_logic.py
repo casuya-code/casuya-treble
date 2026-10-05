@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from shared.corner_results import corner_leg_outcome
 from shared.models import Fixture, MatchStatus, Slip, SlipStatus
 from shared.poisson import leg_won_over_15
 
@@ -19,12 +20,20 @@ def fixtures_for_legs(legs, fixtures_by_id: dict) -> list[Fixture] | None:
     return found
 
 
-def slip_status_from_fixtures(fixtures: list[Fixture]) -> SlipStatus:
+def slip_status_from_fixtures(fixtures: list[Fixture], legs=None) -> SlipStatus:
     if not fixtures:
         return SlipStatus.PENDING
 
     outcomes: list[str] = []
-    for fixture in fixtures:
+    for index, fixture in enumerate(fixtures):
+        market = getattr(legs[index], "market", "") if legs is not None and index < len(legs) else ""
+        if "Corner" in str(market):
+            count = getattr(fixture, "fh_corners", None)
+            half_done = bool(getattr(fixture, "fh_half_complete", False))
+            if count is not None and fixture.status == MatchStatus.FINISHED:
+                half_done = True
+            outcomes.append(corner_leg_outcome(str(market), count, half_done))
+            continue
         if fixture.home_goals is None or fixture.away_goals is None:
             outcomes.append("pending")
         elif leg_won_over_15(fixture.home_goals, fixture.away_goals):
@@ -60,7 +69,7 @@ async def recompute_all_slip_statuses(db: AsyncSession) -> int:
         fixtures = fixtures_for_legs(slip.legs, fixtures_by_id)
         if fixtures is None:
             continue
-        new_status = slip_status_from_fixtures(fixtures)
+        new_status = slip_status_from_fixtures(fixtures, slip.legs)
         if slip.status != new_status:
             slip.status = new_status
             updated += 1
@@ -88,7 +97,7 @@ async def recompute_slip_statuses_for_user(db: AsyncSession, user_id: UUID) -> i
         fixtures = fixtures_for_legs(slip.legs, fixtures_by_id)
         if fixtures is None:
             continue
-        new_status = slip_status_from_fixtures(fixtures)
+        new_status = slip_status_from_fixtures(fixtures, slip.legs)
         if slip.status != new_status:
             slip.status = new_status
             updated += 1

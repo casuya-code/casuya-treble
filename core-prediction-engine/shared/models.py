@@ -62,6 +62,13 @@ class Fixture(Base):
     closing_odds_over_15: Mapped[float | None] = mapped_column(Float, nullable=True)
     home_goals: Mapped[int | None] = mapped_column(Integer, nullable=True)
     away_goals: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    home_corners: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    away_corners: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fh_corner_over_25: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fh_corner_over_35: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sportradar_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    fh_corners: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fh_half_complete: Mapped[bool] = mapped_column(default=False)
     status: Mapped[MatchStatus] = mapped_column(
         Enum(MatchStatus, name="match_status"), default=MatchStatus.SCHEDULED
     )

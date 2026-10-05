@@ -7,7 +7,7 @@ import { MenuButton, useLandingLang } from "@/components/LandingLang";
 import { StatusKind } from "@/components/StatusBadge";
 import { SlipCard } from "@/components/SlipCard";
 import Link from "next/link";
-import { api, GenerateResult, Slip } from "@/lib/api";
+import { api, GenerateResult, Slip, WeatherNote } from "@/lib/api";
 import { clearToken, markSignedOut } from "@/lib/auth";
 import { fill, formatDay } from "@/lib/landingCopy";
 import { nairobiDay, slipDates } from "@/lib/format";
@@ -28,6 +28,16 @@ function importBetPawaOnce() {
   return betpawaAutoImport;
 }
 
+function weatherDetail(
+  notes: WeatherNote[] | undefined,
+  t: { weatherRain: string; weatherSnow: string; weatherWind: string },
+): string {
+  if (!notes?.length) return "";
+  const label: Record<string, string> = { rain: t.weatherRain, snow: t.weatherSnow, wind: t.weatherWind };
+  const shown = notes.slice(0, 4).map((note) => `${note.match}: ${label[note.reason] ?? note.reason}`);
+  return ` ${shown.join(". ")}.`;
+}
+
 function trebleGapMessage(
   result: GenerateResult,
   t: {
@@ -38,11 +48,22 @@ function trebleGapMessage(
     noTrebleSpread: string;
     noTrebleOdds: string;
     noTrebleFloor: string;
+    noTrebleCorners: string;
+    noTrebleWeather: string;
     noTrebleAdmin: string;
+    weatherRain: string;
+    weatherSnow: string;
+    weatherWind: string;
   },
   isAdmin: boolean,
 ): string {
-  const counts = { stored: result.stored, upcoming: result.upcoming, priced: result.priced, same: result.same_day };
+  const counts = {
+    stored: result.stored,
+    upcoming: result.upcoming,
+    priced: result.priced,
+    same: result.same_day,
+    n: result.weather?.length ?? 0,
+  };
   const text =
     result.reason === "none_loaded"
       ? t.noTrebleNone
@@ -56,11 +77,16 @@ function trebleGapMessage(
               ? fill(t.noTrebleSpread, counts)
             : result.reason === "below_floor"
               ? t.noTrebleFloor
-              : fill(t.noTrebleOdds, counts);
+              : result.reason === "no_corner"
+                ? t.noTrebleCorners
+              : result.reason === "weather"
+                ? fill(t.noTrebleWeather, counts)
+                : fill(t.noTrebleOdds, counts);
+  const detail = weatherDetail(result.weather, t);
   if (isAdmin && (result.reason === "none_loaded" || result.reason === "all_started")) {
-    return `${text} ${t.noTrebleAdmin}`;
+    return `${text} ${t.noTrebleAdmin}${detail}`;
   }
-  return text;
+  return `${text}${detail}`;
 }
 
 function DeskPage() {
@@ -77,6 +103,7 @@ function DeskPage() {
   const [filter, setFilter] = useState<Filter>("ALL");
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [showAlternatives, setShowAlternatives] = useState(false);
+  const [cornerMarket, setCornerMarket] = useState(false);
   const [oddsApiReady, setOddsApiReady] = useState(false);
   const [betpawaReady, setBetpawaReady] = useState(true);
   const [showTools, setShowTools] = useState(false);
@@ -274,15 +301,18 @@ function DeskPage() {
       const created = await api.generateSlips({
         maxSlips: showAlternatives ? 3 : 1,
         replacePending: true,
+        market: cornerMarket ? "corners" : "goals",
       });
       if (created.slips.length === 0) {
         throw new Error(trebleGapMessage(created, t, isAdmin));
       }
+      const held = weatherDetail(created.weather, t);
       if (created.slips.some((slip) => slip.forced)) {
         const odds = created.slips.map((slip) => slip.closing_odds.toFixed(2)).join(", ");
-        setInfo(fill(t.forcedReady, { odds }));
+        setInfo(`${fill(t.forcedReady, { odds })}${held}`);
       } else {
-        setInfo(showAlternatives ? fill(t.topReady, { n: created.slips.length }) : t.bestReady);
+        const ready = showAlternatives ? fill(t.topReady, { n: created.slips.length }) : t.bestReady;
+        setInfo(`${ready}${held}`);
       }
     });
   }
@@ -303,6 +333,7 @@ function DeskPage() {
           dateFilter={dateFilter}
           matchDates={matchDates}
           showAlternatives={showAlternatives}
+          cornerMarket={cornerMarket}
           showTools={showTools}
           onFilter={(next) => {
             setFilter(next);
@@ -314,6 +345,7 @@ function DeskPage() {
           }}
           onGenerate={generate}
           onAlternatives={setShowAlternatives}
+          onCornerMarket={setCornerMarket}
           onRefresh={() => {
             closePhoneSide();
             void refresh();

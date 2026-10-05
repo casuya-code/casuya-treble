@@ -30,11 +30,13 @@ type Props = {
   dateFilter: string | null;
   matchDates: string[];
   showAlternatives: boolean;
+  cornerMarket: boolean;
   showTools: boolean;
   onFilter: (filter: Filter) => void;
   onDate: (day: string | null) => void;
   onGenerate: () => void;
   onAlternatives: (value: boolean) => void;
+  onCornerMarket: (value: boolean) => void;
   onRefresh: () => void;
   onToggleTools: () => void;
   onLogout: () => void;
@@ -52,11 +54,13 @@ export function DeskSide({
   dateFilter,
   matchDates,
   showAlternatives,
+  cornerMarket,
   showTools,
   onFilter,
   onDate,
   onGenerate,
   onAlternatives,
+  onCornerMarket,
   onRefresh,
   onToggleTools,
   onLogout,
@@ -91,6 +95,14 @@ export function DeskSide({
         <p className="desk-label" id="desk-step-make">
           {t.stepMake}
         </p>
+        <div className="desk-choice" role="group" aria-label={t.stepMake}>
+          <button type="button" className={cornerMarket ? "" : "active"} onClick={() => onCornerMarket(false)}>
+            {t.choiceGoals}
+          </button>
+          <button type="button" className={cornerMarket ? "active" : ""} onClick={() => onCornerMarket(true)}>
+            {t.choiceCorners}
+          </button>
+        </div>
         <div className="desk-choice" role="group" aria-label={t.stepMake}>
           <button type="button" className={showAlternatives ? "" : "active"} onClick={() => onAlternatives(false)}>
             {t.choiceOne}

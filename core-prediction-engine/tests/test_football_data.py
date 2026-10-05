@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 from shared.football_data import historical_external_id, parse_football_data_csv, season_codes
 from shared.league_names import league_key
@@ -32,6 +33,33 @@ def test_parse_keeps_full_time_scores_from_the_requested_division():
     assert len(match.external_id) <= 64
     assert match.external_id == historical_external_id("E0", match.kickoff_at, "Man City", "Nott'm Forest")
     assert match.kickoff_at == datetime(2025, 8, 15, 19, 0, tzinfo=timezone.utc)
+
+
+ARG = """Country,League,Season,Date,Time,Home,Away,HG,AG
+Argentina,Liga Profesional,2012/2013,03/08/2012,23:00,Old Club,Other,1,0
+Argentina,Liga Profesional,2026,05/10/2026,20:00,Boca Juniors,River Plate,2,1
+"""
+
+
+def test_argentina_file_keeps_the_recent_season_only():
+    from shared.football_data import recent_season_labels
+
+    rows = parse_football_data_csv(
+        ARG,
+        "ARG",
+        "Argentina / Liga Profesional",
+        seasons={"2026"},
+        tz=ZoneInfo("America/Argentina/Buenos_Aires"),
+    )
+    assert len(rows) == 1
+    assert rows[0].home_team == "Boca Juniors"
+    assert rows[0].home_goals == 2
+    assert rows[0].kickoff_at == datetime(2026, 10, 5, 23, 0, tzinfo=timezone.utc)
+    assert "2026" in recent_season_labels(date(2026, 10, 5))
+    assert league_key("Football / Argentina / Liga Profesional") == "argentina"
+    assert league_key("Football / Argentina / Primera C") is None
+    assert team_key("Argentinos Juniors") == team_key("Argentinos Jrs")
+    assert team_key("Atletico Tucuman") == team_key("Atl. Tucuman")
 
 
 def test_bookmaker_names_meet_the_short_names():

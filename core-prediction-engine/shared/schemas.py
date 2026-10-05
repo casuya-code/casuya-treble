@@ -57,6 +57,8 @@ class SlipLegOut(BaseModel):
     is_demo: bool = False
     home_goals: int | None = None
     away_goals: int | None = None
+    fh_corners: int | None = None
+    fh_half_complete: bool = False
     match_finished: bool = False
 
 

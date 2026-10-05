@@ -18,6 +18,8 @@ export interface SlipLeg {
   is_demo?: boolean;
   home_goals?: number | null;
   away_goals?: number | null;
+  fh_corners?: number | null;
+  fh_half_complete?: boolean;
   match_finished?: boolean;
 }
 
@@ -36,19 +38,33 @@ export interface Slip {
   betpawa_copy_text: string;
 }
 
+export type WeatherNote = { match: string; reason: "rain" | "snow" | "wind" | string };
+
 export type GenerateResult = {
   slips: Slip[];
-  reason: "none_loaded" | "all_started" | "no_price" | "too_few" | "spread_days" | "below_floor" | "below_min" | null;
+  reason:
+    | "none_loaded"
+    | "all_started"
+    | "no_price"
+    | "too_few"
+    | "spread_days"
+    | "below_floor"
+    | "below_min"
+    | "weather"
+    | "no_corner"
+    | null;
   stored: number;
   upcoming: number;
   priced: number;
   same_day: number;
+  weather?: WeatherNote[];
 };
 
 export type GenerateOptions = {
   minOdds?: number;
   maxSlips?: number;
   replacePending?: boolean;
+  market?: "goals" | "corners";
 };
 
 export type AuthUser = { id: string; email: string; is_admin: boolean };
@@ -184,11 +200,12 @@ export const api = {
     ),
   seedDemo: () => request<{ id: string }[]>("/ingestion/fixtures/seed-demo", { method: "POST" }),
   generateSlips: (opts: GenerateOptions = {}) => {
-    const { minOdds = 3, maxSlips = 1, replacePending = true } = opts;
+    const { minOdds = 3, maxSlips = 1, replacePending = true, market = "goals" } = opts;
     const params = new URLSearchParams({
       min_odds: String(minOdds),
       max_slips: String(maxSlips),
       replace_pending: String(replacePending),
+      market,
     });
     return request<GenerateResult>(`/slips/generate?${params}`, { method: "POST" });
   },
@@ -223,8 +240,10 @@ export type HistoryLeg = {
   away_team: string;
   odds: number;
   result: "won" | "lost" | "pending";
+  market?: string;
   home_goals: number | null;
   away_goals: number | null;
+  fh_corners?: number | null;
   practice: boolean;
 };
 

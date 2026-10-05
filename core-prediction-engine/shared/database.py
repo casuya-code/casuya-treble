@@ -37,6 +37,17 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE slips ADD COLUMN IF NOT EXISTS forced BOOLEAN NOT NULL DEFAULT FALSE")
         )
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS home_corners INTEGER"))
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS away_corners INTEGER"))
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS fh_corner_over_25 DOUBLE PRECISION"))
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS fh_corner_over_35 DOUBLE PRECISION"))
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS sportradar_id VARCHAR(32)"))
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS fh_corners INTEGER"))
+        await conn.execute(
+            text(
+                "ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS fh_half_complete BOOLEAN NOT NULL DEFAULT FALSE"
+            )
+        )
 
     if engine.dialect.name != "postgresql":
         return

@@ -30,5 +30,8 @@ def build_betpawa_copy(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> str:
     lines: list[str] = []
     for leg in slip.legs:
         fx = fixtures_by_id[leg.fixture_id]
-        lines.append(f"{fx.home_team} v {fx.away_team}")
+        if "Corner" in leg.market:
+            lines.append(f"{fx.home_team} v {fx.away_team} — {leg.market}")
+        else:
+            lines.append(f"{fx.home_team} v {fx.away_team}")
     return "\n".join(lines)

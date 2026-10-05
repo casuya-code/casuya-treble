@@ -6,6 +6,9 @@ import { api, HistoryLeg, HistorySlip, PublicHistory } from "@/lib/api";
 import { formatDay, formatMoney, formatStake } from "@/lib/landingCopy";
 
 function scoreText(leg: HistoryLeg): string {
+  if ((leg.market || "").toLowerCase().includes("corner")) {
+    return leg.fh_corners == null ? "—" : String(leg.fh_corners);
+  }
   if (leg.home_goals == null || leg.away_goals == null) return "—";
   return `${leg.home_goals}–${leg.away_goals}`;
 }

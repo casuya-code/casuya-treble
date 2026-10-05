@@ -29,7 +29,9 @@ from shared.treble_generator import (
     empty_treble_reason,
     find_best_trebles,
 )
+from shared.corners import find_best_corner_trebles
 from shared.team_strength import apply_form_lambdas
+from shared.weather import matches_held_for_weather
 
 router = APIRouter(prefix="/slips", tags=["slip-generator"])
 
@@ -52,6 +54,8 @@ def _slip_to_out(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> SlipOut:
                 is_demo=is_demo_fixture(fx),
                 home_goals=fx.home_goals,
                 away_goals=fx.away_goals,
+                fh_corners=fx.fh_corners,
+                fh_half_complete=bool(fx.fh_half_complete),
                 match_finished=fx.status == MatchStatus.FINISHED,
             )
         )
@@ -77,6 +81,11 @@ def _slip_to_out(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> SlipOut:
     )
 
 
+class WeatherNote(BaseModel):
+    match: str
+    reason: str
+
+
 class GenerateResult(BaseModel):
     slips: list[SlipOut]
     reason: str | None = None
@@ -84,6 +93,7 @@ class GenerateResult(BaseModel):
     upcoming: int = 0
     priced: int = 0
     same_day: int = 0
+    weather: list[WeatherNote] = []
 
 
 @router.post("/generate", response_model=GenerateResult)
@@ -93,41 +103,67 @@ async def generate_slips(
     min_odds: float = Query(3.0, ge=2.0, le=10.0),
     max_slips: int = Query(1, ge=1, le=10),
     replace_pending: bool = Query(True),
+    market: str = Query("goals"),
 ) -> GenerateResult:
     result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
     all_fixtures = list(result.scalars().all())
     upcoming = upcoming_fixtures(all_fixtures)
     fixtures = prefer_real_fixtures(upcoming)
-    apply_form_lambdas(fixtures, [row for row in all_fixtures if row.home_goals is not None])
-    trebles = find_best_trebles(fixtures, min_combined_odds=min_odds, limit=max_slips)
-    priced = count_priced_legs(fixtures)
-    eligible = count_eligible_legs(fixtures)
-    same_day = busiest_day_count(fixtures)
+    corner_mode = market == "corners"
+    if not corner_mode:
+        apply_form_lambdas(fixtures, [row for row in all_fixtures if row.home_goals is not None])
+    held = await matches_held_for_weather(fixtures)
+    held_ids = {fixture.id for fixture, _reason in held}
+    weather = [
+        WeatherNote(match=f"{fixture.home_team} vs {fixture.away_team}", reason=reason) for fixture, reason in held
+    ]
+    playable = [fixture for fixture in fixtures if fixture.id not in held_ids]
+    if corner_mode:
+        history = [row for row in all_fixtures if row.home_corners is not None]
+        trebles = find_best_corner_trebles(playable, history, min_combined_odds=min_odds, limit=max_slips)
+    else:
+        trebles = find_best_trebles(playable, min_combined_odds=min_odds, limit=max_slips)
+    priced = count_priced_legs(playable)
+    eligible = count_eligible_legs(playable)
+    same_day = busiest_day_count(playable)
     if not trebles:
-        return GenerateResult(
-            slips=[],
-            reason=empty_treble_reason(
-                stored=len(all_fixtures),
-                upcoming=len(fixtures),
-                priced=priced,
-                same_day=same_day,
-                eligible=eligible,
-            ),
+        reason = empty_treble_reason(
             stored=len(all_fixtures),
-            upcoming=len(fixtures),
+            upcoming=len(playable),
             priced=priced,
             same_day=same_day,
+            eligible=eligible,
+        )
+        if corner_mode and playable:
+            reason = "no_corner"
+        elif weather and reason in {"too_few", "spread_days", "below_floor", "below_min"}:
+            reason = "weather"
+        return GenerateResult(
+            slips=[],
+            reason=reason,
+            stored=len(all_fixtures),
+            upcoming=len(playable),
+            priced=priced,
+            same_day=same_day,
+            weather=weather,
         )
 
     if replace_pending:
         pending = await db.execute(
-            select(Slip.slip_id).where(
+            select(Slip)
+            .options(selectinload(Slip.legs))
+            .where(
                 Slip.status == SlipStatus.PENDING,
                 Slip.user_id == user.id,
                 Slip.placed_on_betpawa.is_(False),
             )
         )
-        pending_ids = [row[0] for row in pending.all()]
+        pending_ids = []
+        for slip in pending.scalars():
+            markets = {leg.market for leg in slip.legs}
+            is_corner = any("Corner" in name for name in markets)
+            if is_corner == corner_mode:
+                pending_ids.append(slip.slip_id)
         if pending_ids:
             await db.execute(delete(Slip).where(Slip.slip_id.in_(pending_ids)))
 
@@ -146,6 +182,7 @@ async def generate_slips(
             slip.legs.append(
                 SlipLeg(
                     fixture_id=leg.fixture_id,
+                    market=leg.market,
                     leg_odds=leg.odds,
                     model_probability=round(leg.model_probability, 6),
                 )
@@ -160,7 +197,14 @@ async def generate_slips(
     fixtures_by_id = {f.id: f for f in fixtures}
     out = [_slip_to_out(s, fixtures_by_id) for s in created]
     out.sort(key=lambda s: s.model_probability, reverse=True)
-    return GenerateResult(slips=out, stored=len(all_fixtures), upcoming=len(fixtures), priced=priced, same_day=same_day)
+    return GenerateResult(
+        slips=out,
+        stored=len(all_fixtures),
+        upcoming=len(playable),
+        priced=priced,
+        same_day=same_day,
+        weather=weather,
+    )
 
 
 class RetentionInfo(BaseModel):
@@ -323,6 +367,9 @@ async def public_placed_history(db: AsyncSession = Depends(get_db)) -> PublicHis
                     away_goals=fixture.away_goals,
                     finished=fixture.status == MatchStatus.FINISHED,
                     practice=is_demo_fixture(fixture),
+                    market=leg.market,
+                    fh_corners=fixture.fh_corners,
+                    fh_half_complete=bool(fixture.fh_half_complete),
                 )
             )
         if legs:

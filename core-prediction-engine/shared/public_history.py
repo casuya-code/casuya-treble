@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 
+from shared.corner_results import corner_leg_outcome
 from shared.poisson import leg_won_over_15
 from shared.time_buckets import local_day
 
@@ -21,6 +22,9 @@ class HistoryLeg:
     away_goals: int | None
     finished: bool
     practice: bool
+    market: str = "Over 1.5 Goals"
+    fh_corners: int | None = None
+    fh_half_complete: bool = False
 
 
 @dataclass
@@ -32,6 +36,9 @@ class HistorySlip:
 
 
 def leg_result(leg: HistoryLeg) -> str:
+    if "Corner" in leg.market:
+        half_done = leg.fh_half_complete or (leg.finished and leg.fh_corners is not None)
+        return corner_leg_outcome(leg.market, leg.fh_corners, half_done)
     if leg.home_goals is None or leg.away_goals is None:
         return "pending"
     if leg_won_over_15(leg.home_goals, leg.away_goals):
@@ -71,7 +78,7 @@ def build_public_history(slips: list[HistorySlip]) -> dict:
     unique: dict[str, HistoryLeg] = {}
     for slip in sorted(slips, key=lambda item: item.placed_at):
         for leg in slip.legs:
-            unique.setdefault(leg.fixture_id, leg)
+            unique.setdefault(f"{leg.fixture_id}:{leg.market}", leg)
 
     matches_won = matches_lost = matches_pending = 0
     days: dict[str, dict] = defaultdict(
@@ -138,8 +145,10 @@ def build_public_history(slips: list[HistorySlip]) -> dict:
                         "away_team": leg.away_team,
                         "odds": leg.odds,
                         "result": leg_result(leg),
+                        "market": leg.market,
                         "home_goals": leg.home_goals,
                         "away_goals": leg.away_goals,
+                        "fh_corners": leg.fh_corners,
                         "practice": leg.practice,
                     }
                     for leg in slip.legs
