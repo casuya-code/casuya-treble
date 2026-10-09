@@ -383,6 +383,8 @@ async def ensure_history(
             select(BBGame.id)
             .where(
                 (BBGame.home_team_id == game.home_team_id)
+                | (BBGame.away_team_id == game.home_team_id)
+                | (BBGame.home_team_id == game.away_team_id)
                 | (BBGame.away_team_id == game.away_team_id),
                 BBGame.season_type == 2,
                 BBGame.status == "post",
@@ -750,7 +752,7 @@ async def audit(db: AsyncSession, window_days: int) -> dict:
             line = latest_line.get(g.id)
             if run is None or line is None or run.model_total is None or run.p_over is None:
                 continue
-            if not (run.model_total > line and run.p_over >= 0.60):
+            if not (run.model_total > line and run.p_over >= settings.bb_p_over_min):
                 continue  # the model never committed to OVER for this game
             total = (g.home_score or 0) + (g.away_score or 0)
             if total > line:

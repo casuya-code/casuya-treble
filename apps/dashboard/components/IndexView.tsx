@@ -43,13 +43,21 @@ function ExampleSlip() {
   );
 }
 
-function visitorId(): string {
+function visitorId(): string | null {
   const key = "ct-visitor";
-  const saved = localStorage.getItem(key);
-  if (saved) return saved;
-  const created = crypto.randomUUID();
-  localStorage.setItem(key, created);
-  return created;
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) return saved;
+    const created =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : null;
+    if (!created) return null;
+    localStorage.setItem(key, created);
+    return created;
+  } catch {
+    return null;
+  }
 }
 
 function VisitLine() {
@@ -58,12 +66,15 @@ function VisitLine() {
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .recordVisit(visitorId())
-      .then((totals) => {
-        if (!cancelled) setCounts(totals);
-      })
-      .catch(() => undefined);
+    const id = visitorId();
+    if (id) {
+      api
+        .recordVisit(id)
+        .then((totals) => {
+          if (!cancelled) setCounts(totals);
+        })
+        .catch(() => undefined);
+    }
     return () => {
       cancelled = true;
     };

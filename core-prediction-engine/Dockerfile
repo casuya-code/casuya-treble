@@ -14,6 +14,7 @@ COPY 3-market-odds-monitor ./3-market-odds-monitor
 COPY 4-slip-generator-service ./4-slip-generator-service
 COPY 5-realtime-tracker-service ./5-realtime-tracker-service
 COPY 6-database-purger ./6-database-purger
+COPY 7-basketball-filter-service ./7-basketball-filter-service
 COPY jobs ./jobs
 
 ENV PYTHONPATH=/app

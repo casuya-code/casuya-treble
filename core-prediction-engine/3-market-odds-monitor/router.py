@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.config import settings
 from shared.database import get_db
-from shared.models import Fixture
+from shared.deps import get_current_admin, get_current_user
+from shared.models import Fixture, User
 from shared.odds_api_client import OddsApiError, fetch_soccer_over_15
 from shared.poisson import edge_vs_market, implied_probability, prob_over_15
 from shared.schemas import FixtureOut
@@ -57,6 +58,7 @@ async def import_from_the_odds_api(
     db: AsyncSession = Depends(get_db),
     sport: str | None = Query(None),
     region: str | None = Query(None),
+    _user: User = Depends(get_current_user),
 ) -> OddsImportResult:
     try:
         rows, usage = await fetch_soccer_over_15(sport_key=sport, region=region)
@@ -101,7 +103,10 @@ async def import_from_the_odds_api(
 
 @router.patch("/fixtures/{fixture_id}/closing", response_model=FixtureOut)
 async def update_closing_odds(
-    fixture_id: UUID, payload: OddsUpdate, db: AsyncSession = Depends(get_db)
+    fixture_id: UUID,
+    payload: OddsUpdate,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
 ) -> Fixture:
     fixture = await db.get(Fixture, fixture_id)
     if not fixture:

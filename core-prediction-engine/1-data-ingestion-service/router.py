@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.betpawa_client import (
@@ -17,9 +18,10 @@ from shared.betpawa_client import (
 from shared.config import settings
 from shared.corners import LINE_FIELD
 from shared.database import get_db
+from shared.deps import get_current_admin, get_current_user
 from shared.football_data import HistoricalSeedResult, ensure_historical_scores, import_football_data
 from shared.league_names import league_key
-from shared.models import Fixture
+from shared.models import Fixture, User
 from shared.practice_cleanup import purge_practice_data
 from shared.schemas import FixtureCreate, FixtureOut
 
@@ -105,6 +107,7 @@ async def import_from_betpawa(
     db: AsyncSession = Depends(get_db),
     take: int | None = Query(default=None, ge=10, le=100),
     popular_only: bool = Query(False, description="Limit to BetPawa popular football list"),
+    _user: User = Depends(get_current_user),
 ) -> BetPawaImportResult:
     try:
         rows = await fetch_football_over_15(take=take, popular_only=popular_only)
@@ -168,7 +171,9 @@ async def import_from_betpawa(
 
 
 @router.post("/import/football-data", response_model=HistoricalImportResult)
-async def import_historical_scores(db: AsyncSession = Depends(get_db)) -> HistoricalImportResult:
+async def import_historical_scores(
+    db: AsyncSession = Depends(get_db), _admin: User = Depends(get_current_admin)
+) -> HistoricalImportResult:
     """Load finished league scores used to rate attack and defence."""
     try:
         history = await import_football_data(db)
@@ -218,16 +223,26 @@ def _demo_fixtures() -> list[FixtureCreate]:
 
 
 @router.post("/fixtures", response_model=FixtureOut, status_code=201)
-async def ingest_fixture(payload: FixtureCreate, db: AsyncSession = Depends(get_db)) -> Fixture:
+async def ingest_fixture(
+    payload: FixtureCreate,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+) -> Fixture:
     row = Fixture(**payload.model_dump())
     db.add(row)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="external_id already exists") from exc
     await db.refresh(row)
     return row
 
 
 @router.post("/fixtures/seed-demo", response_model=list[FixtureOut])
-async def seed_demo_fixtures(db: AsyncSession = Depends(get_db)) -> list[Fixture]:
+async def seed_demo_fixtures(
+    db: AsyncSession = Depends(get_db), _user: User = Depends(get_current_user)
+) -> list[Fixture]:
     synced: list[Fixture] = []
     for item in _demo_fixtures():
         result = await db.execute(select(Fixture).where(Fixture.external_id == item.external_id))

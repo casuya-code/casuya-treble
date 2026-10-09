@@ -417,7 +417,13 @@ function DeskPage() {
 
         .listSlips({ days: retentionDays })
 
-        .then(setSlips)
+        .then((next) => {
+
+          setSlips(next);
+
+          setError(null);
+
+        })
 
         .catch(() => undefined);
 
@@ -554,7 +560,10 @@ function DeskPage() {
   }, [byStatus, activeDate]);
 
   /** Newest slip in view — pinned above the date groups so the last slip is always first. */
-  const pinned = filtered[0] ?? null;
+  const pinned = useMemo(
+    () => [...filtered].sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0] ?? null,
+    [filtered],
+  );
 
   /** The pin stays month-independent; the date groups below show the viewed month only. */
   const monthRows = useMemo(() => {
@@ -656,7 +665,7 @@ function DeskPage() {
 
       setCopiedId(slip.slip_id);
 
-      setTimeout(() => setCopiedId(null), 3500);
+      setTimeout(() => setCopiedId((current) => (current === slip.slip_id ? null : current)), 3500);
 
     } catch {
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { useLandingLang } from "@/components/LandingLang";
@@ -108,8 +108,10 @@ function HoopsBody() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadId = useRef(0);
 
   const load = useCallback(async (day: string) => {
+    const myId = ++loadId.current;
     setLoading(true);
     setError(null);
     try {
@@ -120,20 +122,25 @@ function HoopsBody() {
         api.bbAudit(30),
         api.me(),
       ]);
+      if (myId !== loadId.current) return;
       setHealth(h);
       setGates(g);
       setSlate(s);
       setAudit(a);
       setMe(user);
       if (user.is_admin) {
-        setShadow(await api.bbShadow());
+        const shadowResult = await api.bbShadow();
+        if (myId !== loadId.current) return;
+        setShadow(shadowResult);
       } else {
         setShadow(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.requestFailed);
+      if (myId === loadId.current) {
+        setError(err instanceof Error ? err.message : t.requestFailed);
+      }
     } finally {
-      setLoading(false);
+      if (myId === loadId.current) setLoading(false);
     }
   }, [t.requestFailed]);
 

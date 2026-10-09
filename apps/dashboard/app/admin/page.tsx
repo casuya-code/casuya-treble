@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthGuard } from "@/components/AuthGuard";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -24,6 +24,14 @@ function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [section, setSection] = useState<"users" | "overview" | "tools">("users");
+  const mounted = useRef(true);
+
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   const load = useCallback(async () => {
     try {
@@ -35,8 +43,11 @@ function AdminPage() {
       return;
     }
 
+    if (!mounted.current) return;
+
     try {
       const me = await api.me();
+      if (!mounted.current) return;
       setEmail(me.email);
       if (!me.is_admin) {
         setAllowed(false);
@@ -48,6 +59,7 @@ function AdminPage() {
         api.adminUsers(),
         api.oddsProviderStatus().catch(() => null),
       ]);
+      if (!mounted.current) return;
       setOverview(summary);
       setUsers(rows);
       setOddsReady(Boolean(odds?.configured));

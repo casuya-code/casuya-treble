@@ -6,7 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_db
-from shared.models import Fixture, MatchStatus
+from shared.deps import get_current_admin
+from shared.models import Fixture, MatchStatus, User
 from shared.schemas import FixtureOut, LiveScoreUpdate
 from shared.tracker_logic import recompute_all_slip_statuses
 
@@ -15,7 +16,10 @@ router = APIRouter(prefix="/tracker", tags=["realtime-tracker"])
 
 @router.patch("/fixtures/{fixture_id}/live", response_model=FixtureOut)
 async def update_live_score(
-    fixture_id: UUID, payload: LiveScoreUpdate, db: AsyncSession = Depends(get_db)
+    fixture_id: UUID,
+    payload: LiveScoreUpdate,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
 ) -> Fixture:
     fixture = await db.get(Fixture, fixture_id)
     if not fixture:
@@ -34,7 +38,11 @@ async def update_live_score(
 
 
 @router.post("/fixtures/{fixture_id}/kickoff", response_model=FixtureOut)
-async def mark_kickoff(fixture_id: UUID, db: AsyncSession = Depends(get_db)) -> Fixture:
+async def mark_kickoff(
+    fixture_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+) -> Fixture:
     fixture = await db.get(Fixture, fixture_id)
     if not fixture:
         raise HTTPException(status_code=404, detail="Fixture not found")
@@ -48,7 +56,9 @@ async def mark_kickoff(fixture_id: UUID, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.post("/fixtures/promote-scheduled", response_model=dict)
-async def promote_due_fixtures(db: AsyncSession = Depends(get_db)) -> dict:
+async def promote_due_fixtures(
+    db: AsyncSession = Depends(get_db), _admin: User = Depends(get_current_admin)
+) -> dict:
     """Demo helper: mark scheduled fixtures whose kickoff passed as LIVE."""
     now = datetime.now(timezone.utc)
     result = await db.execute(

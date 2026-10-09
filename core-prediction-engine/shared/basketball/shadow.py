@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from shared.config import settings
+
 # (key, human label, side the rule bets)
 CANDIDATE_RULES: tuple[tuple[str, str], ...] = (
     ("official_and", "Strict 10-gate AND (OVER)"),
@@ -45,7 +47,7 @@ def side_for(rule: str, g: ShadowGame) -> str | None:
     if rule == "model_over":
         return "over" if g.model_total > g.line else None
     if rule == "model_over_confident":
-        return "over" if g.model_total > g.line and (g.p_over or 0.0) >= 0.60 else None
+        return "over" if g.model_total > g.line and (g.p_over or 0.0) >= settings.bb_p_over_min else None
     if rule == "value_overrule":
         return "over" if g.edge is not None and g.edge >= 0.25 and g.line <= 230.0 else None
     if rule == "fade_conviction":

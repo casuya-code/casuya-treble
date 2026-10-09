@@ -193,10 +193,10 @@ def build_public_history(slips: list[HistorySlip]) -> dict:
 
 
 def _unique_accumulators(slips: list[HistorySlip]) -> list[HistorySlip]:
-    """One row when every account placed the same three matches."""
+    """One row when every account placed the same matches, at any slip width."""
     seen: dict[tuple[str, ...], HistorySlip] = {}
     for slip in sorted(slips, key=lambda item: item.placed_at):
-        if len(slip.legs) != 3:
+        if not slip.legs:
             continue
         key = tuple(sorted(leg.fixture_id for leg in slip.legs))
         kept = seen.get(key)

@@ -116,13 +116,15 @@ async function request<T>(path: string, init?: RequestInit, auth = true): Promis
   }
 
   if (!res.ok) {
+    const text = await res.text();
     let detail = res.statusText;
-    try {
-      const body = await res.json();
-      const raw = body.detail ?? body.message ?? body;
-      detail = formatApiErrorDetail(raw);
-    } catch {
-      detail = await res.text();
+    if (text) {
+      try {
+        const body = JSON.parse(text);
+        detail = formatApiErrorDetail(body?.detail ?? body?.message ?? body);
+      } catch {
+        detail = text;
+      }
     }
     throw new Error(detail || "Request failed");
   }

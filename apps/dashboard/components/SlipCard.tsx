@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DateBadge, StatusBadge, StatusKind } from "@/components/StatusBadge";
 import { useLandingLang } from "@/components/LandingLang";
 import { Slip, SlipLeg } from "@/lib/api";
@@ -55,15 +55,31 @@ type Props = {
 export function SlipCard({ slip, featured, showGuide, copied, loading, onCopy, onTogglePlaced }: Props) {
   const { lang, t } = useLandingLang();
   const [copiedName, setCopiedName] = useState<string | null>(null);
+  const copiedTimers = useRef<number[]>([]);
+
+  useEffect(
+    () => () => {
+      copiedTimers.current.forEach((id) => window.clearTimeout(id));
+      copiedTimers.current = [];
+    },
+    [],
+  );
 
   async function copyMatchName(fixtureId: string, name: string) {
     try {
       await navigator.clipboard.writeText(name);
       setCopiedName(fixtureId);
-      window.setTimeout(() => setCopiedName((current) => (current === fixtureId ? null : current)), 3500);
+      copiedTimers.current.push(
+        window.setTimeout(() => setCopiedName((current) => (current === fixtureId ? null : current)), 3500),
+      );
     } catch {
       setCopiedName(`fail:${fixtureId}`);
-      window.setTimeout(() => setCopiedName((current) => (current === `fail:${fixtureId}` ? null : current)), 3500);
+      copiedTimers.current.push(
+        window.setTimeout(
+          () => setCopiedName((current) => (current === `fail:${fixtureId}` ? null : current)),
+          3500,
+        ),
+      );
     }
   }
   const modelPct = slip.model_probability * 100;

@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.config import settings
 from shared.database import get_db
+from shared.deps import get_current_admin
+from shared.models import User
 from shared.purger import purge_old_basketball_runs, purge_old_slips
 
 router = APIRouter(prefix="/maintenance", tags=["database-purger"])
@@ -20,12 +22,16 @@ class BasketballPurgeResult(BaseModel):
 
 
 @router.post("/purge-slips", response_model=PurgeResult)
-async def purge_slips(db: AsyncSession = Depends(get_db)) -> PurgeResult:
+async def purge_slips(
+    db: AsyncSession = Depends(get_db), _admin: User = Depends(get_current_admin)
+) -> PurgeResult:
     deleted = await purge_old_slips(db)
     return PurgeResult(deleted_slips=deleted, retention_days=settings.purge_days)
 
 
 @router.post("/purge-basketball", response_model=BasketballPurgeResult)
-async def purge_basketball(db: AsyncSession = Depends(get_db)) -> BasketballPurgeResult:
+async def purge_basketball(
+    db: AsyncSession = Depends(get_db), _admin: User = Depends(get_current_admin)
+) -> BasketballPurgeResult:
     deleted = await purge_old_basketball_runs(db)
     return BasketballPurgeResult(deleted_gate_runs=deleted, retention_days=settings.purge_days)

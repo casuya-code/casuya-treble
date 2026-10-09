@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState, Suspense } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/AuthShell";
 import { useLandingLang } from "@/components/LandingLang";
@@ -25,6 +25,14 @@ function ResetForm() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const redirectTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (redirectTimer.current !== null) window.clearTimeout(redirectTimer.current);
+    },
+    [],
+  );
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -37,7 +45,7 @@ function ResetForm() {
     try {
       const res = await api.resetPassword(token, password);
       setMessage(res.message);
-      setTimeout(() => router.replace("/login"), 1500);
+      redirectTimer.current = window.setTimeout(() => router.replace("/login"), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.resetFailed);
     } finally {
