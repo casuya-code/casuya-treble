@@ -24,8 +24,26 @@ _STOP = {
     "rb",
     "rc",
     "ca",
+    "club",
 }
 _TAIL = {"city", "town", "county", "hotspur", "wanderers", "albion", "united", "utd"}
+
+# Letters that NFKD does not split into base + mark (Polish, Nordic, German...).
+_FOLD = str.maketrans(
+    {
+        "\u0142": "l",  # ł
+        "\u00f8": "o",  # ø
+        "\u0111": "d",  # đ
+        "\u00f0": "d",  # ð
+        "\u00fe": "th",  # þ
+        "\u00df": "ss",  # ß
+        "\u00e6": "ae",  # æ
+        "\u0153": "oe",  # œ
+        "\u0127": "h",  # ħ
+        "\u0131": "i",  # dotless i
+        "\u014b": "n",  # ŋ
+    }
+)
 
 # Short Football-Data names and the longer names BetPawa prints, one key each.
 _ALIASES = {
@@ -113,13 +131,33 @@ _ALIASES = {
     "instituto cordoba": "instituto",
     "colon santa fe": "colon",
     "colon": "colon",
+    # Extra leagues seeded July 2026: bookmaker long names against the short files.
+    "ifk goteborg": "goteborg",
+    "ik sirius": "sirius",
+    "if brommapojkarna": "brommapojkarna",
+    "vasteraas sk": "vasteras sk",
+    "odense boldklub": "odense",
+    "seinajoen jk": "sjk",
+    "rks rakow czestochowa": "rakow",
+    "ks cracovia krakow": "cracovia",
+    "zaglebie lubin": "zaglebie",
+    "corvinul hunedoara 1921": "corvinul",
+    "acs sepsi osk sfantu gheorghe": "sepsi sf gheorghe",
+    "dinamo bucuresti 1948": "dinamo bucuresti",
+    "din bucuresti": "dinamo bucuresti",
+    "deportivo toluca": "toluca",
+    "sk beveren": "beveren",
+    "fagiano okayama": "okayama",
+    "kyoto sanga": "kyoto",
+    "machida zelvia": "machida",
+    "urawa red diamonds": "urawa reds",
 }
 
 
 def _normalize(name: str) -> str:
     text = unicodedata.normalize("NFKD", name)
     text = "".join(char for char in text if not unicodedata.combining(char))
-    text = text.lower().replace("'", "").replace(".", " ")
+    text = text.lower().translate(_FOLD).replace("'", "").replace(".", " ")
     cleaned = []
     for char in text:
         cleaned.append(char if char.isalnum() else " ")

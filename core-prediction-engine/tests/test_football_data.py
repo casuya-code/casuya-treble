@@ -143,6 +143,28 @@ def test_every_seeded_league_file_resolves_to_a_key():
         assert league_key(league) is not None, f"{division} {league}"
 
 
+def test_extra_leagues_join_bookmaker_names_to_short_file_names():
+    assert team_key("IFK Göteborg") == team_key("Goteborg")
+    assert team_key("IK Sirius") == team_key("Sirius")
+    assert team_key("IF Brommapojkarna") == team_key("Brommapojkarna")
+    assert team_key("Västerås SK") == team_key("Vasteras SK")
+    assert team_key("Odense Boldklub") == team_key("Odense")
+    assert team_key("Seinäjoen JK") == team_key("SJK")
+    assert team_key("RKS Raków Częstochowa") == team_key("Rakow")
+    assert team_key("KS Cracovia Kraków") == team_key("Cracovia")
+    assert team_key("Zagłębie Lubin") == team_key("Zaglebie")
+    assert team_key("FC Corvinul Hunedoara 1921") == team_key("Corvinul")
+    assert team_key("ACS Sepsi OSK Sfântu Gheorghe") == team_key("Sepsi Sf. Gheorghe")
+    assert team_key("FC Dinamo Bucuresti 1948") == team_key("Dinamo Bucuresti")
+    assert team_key("Deportivo Toluca FC") == team_key("Toluca")
+    assert team_key("SK Beveren") == team_key("Beveren")
+    assert team_key("Fagiano Okayama") == team_key("Okayama")
+    assert team_key("Kyoto Sanga FC") == team_key("Kyoto")
+    assert team_key("Machida Zelvia") == team_key("Machida")
+    assert team_key("Urawa Red Diamonds") == team_key("Urawa Reds")
+    assert team_key("Club Puebla") == team_key("Puebla")
+
+
 def test_form_uses_history_when_the_names_differ():
     history = []
     for day in range(1, 13):
