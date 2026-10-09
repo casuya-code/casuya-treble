@@ -121,7 +121,7 @@ def trebles_from_legs(
 def slips_from_legs(
     legs: list[CandidateLeg],
     *,
-    min_combined_odds: float = 2.1,
+    min_combined_odds: float = 1.9,
     max_combined_odds: float | None = None,
     max_legs: int = 3,
     limit: int = 5,

@@ -103,7 +103,7 @@ class GenerateResult(BaseModel):
 async def generate_slips(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-    min_odds: float = Query(2.1, ge=2.0, le=10.0),
+    min_odds: float = Query(1.9, ge=1.01, le=10.0),
     max_odds: float = Query(2.5, ge=2.0, le=20.0),
     max_legs: int = Query(3, ge=1, le=3),
     max_slips: int = Query(1, ge=1, le=10),

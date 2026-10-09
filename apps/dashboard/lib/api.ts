@@ -61,7 +61,7 @@ export type GenerateResult = {
 };
 
 export type GenerateOptions = {
-  /** Combined odds floor for a generated slip. Default 2.1. */
+  /** Combined odds floor for a generated slip. Default 1.9. */
   minOdds?: number;
   /** Combined odds ceiling for a generated slip. Default 2.5. */
   maxOdds?: number;
@@ -286,7 +286,7 @@ export const api = {
   seedDemo: () => request<{ id: string }[]>("/ingestion/fixtures/seed-demo", { method: "POST" }),
   generateSlips: (opts: GenerateOptions = {}) => {
     const {
-      minOdds = 2.1,
+      minOdds = 1.9,
       maxOdds = 2.5,
       maxLegs = 3,
       maxSlips = 1,

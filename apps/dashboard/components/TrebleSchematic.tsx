@@ -41,7 +41,7 @@ export function TrebleSchematic() {
           <span className="treble-eq">2.40</span>
         </p>
         <p className="schematic-caption">
-          Example prices. Casuya Treble uses today’s BetPawa Over 1.5 odds, and only keeps a slip when the price lands between 2.10 and 2.50.
+          Example prices. Casuya Treble uses today’s BetPawa Over 1.5 odds, and only keeps a slip when the price lands between 1.90 and 2.50.
         </p>
       </div>
     </figure>
