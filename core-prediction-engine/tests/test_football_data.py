@@ -73,6 +73,33 @@ def test_bookmaker_names_meet_the_short_names():
     assert league_key("Test League") is None
 
 
+def test_league_key_leaves_out_youth_women_cups_and_lower_tiers():
+    # Women, youth, reserve, cup and play-off editions are never the senior league.
+    assert league_key("Football / Spain / Primera Division Women") is None
+    assert league_key("Football / Germany / Women Bundesliga") is None
+    assert league_key("Football / Italy / Serie A, Women") is None
+    assert league_key("Football / England / Premier League Cup") is None
+    assert league_key("Football / England / Premier League 2") is None
+    assert league_key("Football / England / Northern Premier League, Premier Division") is None
+    assert league_key("Football / England / Championship, Play-offs") is None
+    # Lower divisions and their trailing tier numbers stay out.
+    assert league_key("Football / Portugal / Liga Portugal 2") is None
+    assert league_key("Football / Portugal / Liga Portugal 3") is None
+    assert league_key("Football / Spain / La Liga 2") is None
+    assert league_key("Football / France / Ligue 2") is None
+    assert league_key("Football / Germany / 2. Bundesliga") is None
+    assert league_key("Football / Argentina / Primera B") is None
+    # The real senior leagues still resolve.
+    assert league_key("Football / Spain / La Liga") == "laliga"
+    assert league_key("Football / Spain / LaLiga") == "laliga"
+    assert league_key("Football / Germany / Bundesliga") == "bundesliga"
+    assert league_key("Football / Italy / Serie A") == "seriea"
+    assert league_key("Football / France / Ligue 1") == "ligue1"
+    assert league_key("Football / Netherlands / Eredivisie") == "eredivisie"
+    assert league_key("Football / Portugal / Liga Portugal") == "primeira"
+    assert league_key("Football / Argentina / Primera Division") == "argentina"
+
+
 def test_form_uses_history_when_the_names_differ():
     history = []
     for day in range(1, 13):
