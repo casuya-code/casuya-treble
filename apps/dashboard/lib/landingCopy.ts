@@ -245,6 +245,10 @@ export const SHELL = {
     noTrebleSpread: "{priced} matches still to kick off have an Over 1.5 price. The fullest date has only {same}. A slip needs its matches on the same date.",
     noTrebleOdds: "The fullest date has {same} matches with an Over 1.5 price. No one, two, or three of them multiply into 1.90–2.50.",
     noTrebleFloor: "No slip today. A leg is used only when Over 1.5 is at least an 80% chance and the price is at least 1.20.",
+    noTrebleNoModel:
+      "None of the {upcoming} matches still to kick off has a model estimate, so none can be a leg. Only leagues with enough finished matches are rated; the rest are skipped rather than guessed.",
+    noTrebleModeled:
+      "Only {modeled} of the {upcoming} matches still to kick off have a model estimate. The rest are skipped rather than guessed.",
     noTrebleCorners:
       "No corner slip today. A first-half corner leg is used only when the price is at least 1.20 and the corner count says that price is too short.",
     noTrebleWeather: "No slip today. {n} matches were left off for heavy rain, snow, or extreme wind at kickoff.",
@@ -456,6 +460,10 @@ export const SHELL = {
     noTrebleSpread: "Mechi {priced} ambazo hazijaanza zina bei ya Over 1.5. Siku iliyo na mechi nyingi zaidi ina {same} tu. Tiketi inahitaji mechi zake ziwe siku moja.",
     noTrebleOdds: "Siku iliyo na mechi nyingi zaidi ina mechi {same} zenye bei ya Over 1.5. Hakuna moja, mbili, au tatu zinazozidisha kufikia 1.90–2.50.",
     noTrebleFloor: "Hakuna tiketi leo. Mechi inaingia tiketi tu ikiwa nafasi ya Over 1.5 ni angalau 80% na bei ni angalau 1.20.",
+    noTrebleNoModel:
+      "Kati ya mechi {upcoming} bado hazijaanza, hakuna inayo na makadirio ya modeli, kwa hiyo hakuna inayoweza kuwa mguu. Tunapanga tu ligi zenye mechi za kutosha zilizomalika; zingine zinaachwa badala ya kuduwaa.",
+    noTrebleModeled:
+      "Kati ya mechi {upcoming} bado hazijaanza, ni {modeled} tu zenye makadirio ya modeli. Zingine zinaachwa badala ya kuduwaa.",
     noTrebleCorners:
       "Hakuna tiketi ya kona leo. Mechi ya kona ya kipindi cha kwanza inaingia tu ikiwa bei ni angalau 1.20 na hesabu ya kona inaonyesha bei hiyo ni ndogo.",
     noTrebleWeather: "Hakuna tiketi leo. Mechi {n} zimeachwa kwa mvua kubwa, theluji, au upepo mkali wakati wa kuanza.",

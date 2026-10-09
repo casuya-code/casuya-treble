@@ -100,6 +100,10 @@ function trebleGapMessage(
 
     noTrebleFloor: string;
 
+    noTrebleNoModel: string;
+
+    noTrebleModeled: string;
+
     noTrebleCorners: string;
 
     noTrebleWeather: string;
@@ -130,6 +134,8 @@ function trebleGapMessage(
 
     n: result.weather?.length ?? 0,
 
+    modeled: result.modeled ?? 0,
+
   };
 
   const text =
@@ -158,6 +164,10 @@ function trebleGapMessage(
 
               ? t.noTrebleFloor
 
+              : result.reason === "no_model"
+
+                ? fill(t.noTrebleNoModel, counts)
+
               : result.reason === "no_corner"
 
                 ? t.noTrebleCorners
@@ -170,13 +180,22 @@ function trebleGapMessage(
 
   const detail = weatherDetail(result.weather, t);
 
+  // Say how much of the board the model could actually rate, so an empty day
+  // never looks like the odds range alone was to blame.
+  const coverage =
+    result.reason !== "no_model" &&
+    result.modeled != null &&
+    result.modeled < result.upcoming
+      ? ` ${fill(t.noTrebleModeled, counts)}`
+      : "";
+
   if (isAdmin && (result.reason === "none_loaded" || result.reason === "all_started")) {
 
     return `${text} ${t.noTrebleAdmin}${detail}`;
 
   }
 
-  return `${text}${detail}`;
+  return `${text}${coverage}${detail}`;
 
 }
 

@@ -97,6 +97,9 @@ class GenerateResult(BaseModel):
     priced: int = 0
     same_day: int = 0
     weather: list[WeatherNote] = []
+    # Fixtures the Over 1.5 model could actually estimate. Null when goals were
+    # not requested, so a corners run never reads it as a coverage figure.
+    modeled: int | None = None
 
 
 @router.post("/generate", response_model=GenerateResult)
@@ -119,8 +122,11 @@ async def generate_slips(
     all_fixtures = list(result.scalars().all())
     upcoming = upcoming_fixtures(all_fixtures)
     fixtures = prefer_real_fixtures(upcoming)
+    # Only a fixture with a real estimate can be a goals leg. Fixtures the model
+    # cannot rate keep the import placeholder and stay out of the pool entirely.
+    modeled: set[UUID] = set()
     if want_goals:
-        apply_form_lambdas(fixtures, [row for row in all_fixtures if row.home_goals is not None])
+        modeled = apply_form_lambdas(fixtures, [row for row in all_fixtures if row.home_goals is not None])
     history = [row for row in all_fixtures if row.home_corners is not None] if want_corners else []
     held = await matches_held_for_weather(fixtures)
     held_ids = {fixture.id for fixture, _reason in held}
@@ -128,6 +134,7 @@ async def generate_slips(
         WeatherNote(match=f"{fixture.home_team} vs {fixture.away_team}", reason=reason) for fixture, reason in held
     ]
     playable = [fixture for fixture in fixtures if fixture.id not in held_ids]
+    goals_pool = [fixture for fixture in playable if fixture.id in modeled]
 
     if both:
         trebles = find_mixed_trebles(
@@ -139,6 +146,7 @@ async def generate_slips(
             max_combined_odds=max_odds,
             max_legs=max_legs,
             limit=max_slips,
+            goals_fixtures=goals_pool,
         )
     elif want_corners:
         trebles = find_best_corner_trebles(
@@ -151,15 +159,27 @@ async def generate_slips(
         )
     else:
         trebles = find_best_trebles(
-            playable,
+            goals_pool,
             min_combined_odds=min_odds,
             max_combined_odds=max_odds,
             max_legs=max_legs,
             limit=max_slips,
         )
 
-    priced_pool = collect_priced_legs(playable, history, want_goals=want_goals, want_corners=want_corners)
-    eligible_pool = build_leg_pool(playable, history, want_goals=want_goals, want_corners=want_corners)
+    priced_pool = collect_priced_legs(
+        playable,
+        history,
+        want_goals=want_goals,
+        want_corners=want_corners,
+        goals_fixtures=goals_pool,
+    )
+    eligible_pool = build_leg_pool(
+        playable,
+        history,
+        want_goals=want_goals,
+        want_corners=want_corners,
+        goals_fixtures=goals_pool,
+    )
     priced = len(priced_pool)
     eligible = len(eligible_pool)
     same_day = busiest_day_from_legs(priced_pool)
@@ -172,7 +192,9 @@ async def generate_slips(
             same_day=same_day,
             eligible=eligible,
         )
-        if want_corners and not want_goals and playable:
+        if want_goals and playable and not goals_pool:
+            reason = "no_model"
+        elif want_corners and not want_goals and playable:
             reason = "no_corner"
         elif weather and reason in {"too_few", "spread_days", "below_floor", "below_min"}:
             reason = "weather"
@@ -184,6 +206,7 @@ async def generate_slips(
             priced=priced,
             same_day=same_day,
             weather=weather,
+            modeled=len(goals_pool) if want_goals else None,
         )
 
     if replace_pending:
@@ -241,6 +264,7 @@ async def generate_slips(
         priced=priced,
         same_day=same_day,
         weather=weather,
+        modeled=len(goals_pool) if want_goals else None,
     )
 
 

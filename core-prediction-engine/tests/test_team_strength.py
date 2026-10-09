@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from shared.models import Fixture
-from shared.team_strength import estimate_match_lambdas
+from shared.team_strength import apply_form_lambdas, estimate_match_lambdas
 from uuid import uuid4
 
 
@@ -48,3 +48,44 @@ def test_thin_history_leaves_the_stored_rates_alone():
         )
         is None
     )
+
+
+def _modelled_history() -> list[Fixture]:
+    """Enough finished matches for the league and both teams to carry a rate."""
+    rows: list[Fixture] = []
+    for day in range(1, 13):
+        rows.append(_played("Hosts", "Filler", 3, 1, day))
+        rows.append(_played("Marker", "Guests", 2, 1, day))
+        rows.append(_played("Alpha", "Beta", 1, 1, day))
+    return rows
+
+
+def _upcoming(league: str, *, lambda_home: float, lambda_away: float) -> Fixture:
+    return Fixture(
+        id=uuid4(),
+        home_team="Hosts",
+        away_team="Guests",
+        league=league,
+        kickoff_at=datetime(2026, 9, 1, 15, 0, tzinfo=timezone.utc),
+        lambda_home=lambda_home,
+        lambda_away=lambda_away,
+    )
+
+
+def test_apply_form_lambdas_reports_the_fixtures_it_estimated():
+    fixture = _upcoming("Test League", lambda_home=1.4, lambda_away=1.1)
+
+    modeled = apply_form_lambdas([fixture], _modelled_history())
+
+    assert modeled == {fixture.id}
+    assert (fixture.lambda_home, fixture.lambda_away) != (1.4, 1.1)
+
+
+def test_a_fixture_with_no_history_is_reset_and_left_out():
+    """An estimate left over from purged history must not survive to be priced."""
+    fixture = _upcoming("No History League", lambda_home=4.0, lambda_away=0.2)
+
+    modeled = apply_form_lambdas([fixture], _modelled_history())
+
+    assert modeled == set()
+    assert (fixture.lambda_home, fixture.lambda_away) == (1.4, 1.1)

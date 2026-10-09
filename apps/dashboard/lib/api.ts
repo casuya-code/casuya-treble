@@ -52,12 +52,15 @@ export type GenerateResult = {
     | "below_min"
     | "weather"
     | "no_corner"
+    | "no_model"
     | null;
   stored: number;
   upcoming: number;
   priced: number;
   same_day: number;
   weather?: WeatherNote[];
+  /** Fixtures the Over 1.5 model could estimate. Null when goals were not requested. */
+  modeled?: number | null;
 };
 
 export type GenerateOptions = {

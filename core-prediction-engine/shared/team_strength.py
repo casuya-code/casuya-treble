@@ -1,6 +1,7 @@
 """Home and away scoring rates from finished matches, weighted toward recent games."""
 
 from datetime import date, datetime
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from shared.league_names import league_key
@@ -11,6 +12,11 @@ HALF_LIFE_DAYS = 21
 MIN_VENUE_GAMES = 6
 MIN_LEAGUE_GAMES = 20
 NAIROBI = ZoneInfo("Africa/Nairobi")
+
+# What every odds feed writes onto a fixture it has no history for. It is a
+# placeholder, never an estimate, so a fixture still holding it must not be priced.
+PLACEHOLDER_LAMBDA_HOME = 1.4
+PLACEHOLDER_LAMBDA_AWAY = 1.1
 
 
 def _weight(played_on: date, today: date) -> float:
@@ -91,9 +97,15 @@ def estimate_match_lambdas(
     return round(min(max(lambda_home, 0.2), 4.0), 3), round(min(max(lambda_away, 0.2), 4.0), 3)
 
 
-def apply_form_lambdas(upcoming: list, history: list) -> int:
-    """Replace stored scoring rates when a team has enough finished matches. Returns how many changed."""
-    updated = 0
+def apply_form_lambdas(upcoming: list, history: list) -> set[UUID]:
+    """Resolve scoring rates for this run and report which fixtures got a real one.
+
+    A fixture whose sample is too thin keeps the import placeholder and falls out of
+    the returned set, so the caller knows not to price it. Any estimate left over from
+    an earlier run is cleared here: a value computed against history that has since
+    been purged must not survive into a slip.
+    """
+    modeled: set[UUID] = set()
     for fixture in upcoming:
         if fixture.home_goals is not None:
             continue
@@ -105,7 +117,13 @@ def apply_form_lambdas(upcoming: list, history: list) -> int:
             today=local_day(fixture.kickoff_at),
         )
         if rates is None:
+            if (
+                fixture.lambda_home != PLACEHOLDER_LAMBDA_HOME
+                or fixture.lambda_away != PLACEHOLDER_LAMBDA_AWAY
+            ):
+                fixture.lambda_home = PLACEHOLDER_LAMBDA_HOME
+                fixture.lambda_away = PLACEHOLDER_LAMBDA_AWAY
             continue
         fixture.lambda_home, fixture.lambda_away = rates
-        updated += 1
-    return updated
+        modeled.add(fixture.id)
+    return modeled

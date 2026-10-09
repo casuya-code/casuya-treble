@@ -62,12 +62,18 @@ def collect_priced_legs(
     *,
     want_goals: bool,
     want_corners: bool,
+    goals_fixtures: list | None = None,
 ) -> list[CandidateLeg]:
-    """Legs with a live price in a requested market, ignoring the eligibility bars."""
+    """Legs with a live price in a requested market, ignoring the eligibility bars.
+
+    ``goals_fixtures`` is the modeled subset for Over 1.5 and defaults to every
+    fixture, so corners-only callers keep their behaviour.
+    """
     del history  # pricing needs no model history
+    goals = fixtures if goals_fixtures is None else goals_fixtures
     legs: list[CandidateLeg] = []
     if want_goals:
-        for fixture in fixtures:
+        for fixture in goals:
             leg = _goals_priced_leg(fixture)
             if leg is not None:
                 legs.append(leg)
@@ -85,12 +91,18 @@ def build_leg_pool(
     *,
     want_goals: bool,
     want_corners: bool,
+    goals_fixtures: list | None = None,
 ) -> list[CandidateLeg]:
     """Eligible legs from every requested market. One fixture can add two legs;
-    the combiner drops any trio that repeats a fixture."""
+    the combiner drops any trio that repeats a fixture.
+
+    Corners draw on ``fixtures``; goals draw on ``goals_fixtures``, the fixtures the
+    model actually estimated. Nothing unmodeled can become a leg.
+    """
+    goals = fixtures if goals_fixtures is None else goals_fixtures
     legs: list[CandidateLeg] = []
     if want_goals:
-        legs.extend(collect_goals_legs(fixtures))
+        legs.extend(collect_goals_legs(goals))
     if want_corners:
         legs.extend(collect_corner_legs(fixtures, history))
     return legs
@@ -106,6 +118,7 @@ def find_mixed_trebles(
     max_combined_odds: float | None = None,
     max_legs: int = 3,
     limit: int = 5,
+    goals_fixtures: list | None = None,
 ) -> list[TrebleCandidate]:
     """Best same-day slips drawn from the requested markets together.
 
@@ -119,6 +132,7 @@ def find_mixed_trebles(
         history,
         want_goals=want_goals,
         want_corners=want_corners,
+        goals_fixtures=goals_fixtures,
     )
     if max_combined_odds is None and max_legs == 3:
         return trebles_from_legs(

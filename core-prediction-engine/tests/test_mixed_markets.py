@@ -153,6 +153,47 @@ def test_corners_only_matches_the_standalone_picker():
     ]
 
 
+def test_goals_legs_come_only_from_the_modeled_subset():
+    """A fixture the model never estimated cannot become an Over 1.5 leg."""
+    history = _corner_history()
+    modeled = _goals("1")
+    unmodeled = _goals("2")
+    corner = _corner("1")
+
+    pool = build_leg_pool(
+        [modeled, unmodeled, corner],
+        history,
+        want_goals=True,
+        want_corners=True,
+        goals_fixtures=[modeled],
+    )
+
+    goals = [leg.fixture_id for leg in pool if leg.market == "Over 1.5 Goals"]
+    assert goals == [modeled.id]
+    # corners keep drawing on the whole pool
+    assert [leg.fixture_id for leg in pool if "Corner" in leg.market] == [corner.id]
+
+
+def test_a_treble_never_includes_an_unmodeled_fixture():
+    history = _corner_history()
+    modeled = [_goals(str(n)) for n in (1, 2, 3)]
+    unmodeled = _goals("4")
+
+    trebles = find_mixed_trebles(
+        [*modeled, unmodeled],
+        history,
+        want_goals=True,
+        want_corners=False,
+        min_combined_odds=3.0,
+        limit=5,
+        goals_fixtures=modeled,
+    )
+
+    assert trebles
+    for treble in trebles:
+        assert unmodeled.id not in {leg.fixture_id for leg in treble.legs}
+
+
 def test_market_request_parsing():
     assert parse_markets(["goals"]) == {"goals"}
     assert parse_markets(["corners"]) == {"corners"}
