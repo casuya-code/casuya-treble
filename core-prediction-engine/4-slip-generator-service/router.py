@@ -103,7 +103,9 @@ class GenerateResult(BaseModel):
 async def generate_slips(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-    min_odds: float = Query(3.0, ge=2.0, le=10.0),
+    min_odds: float = Query(2.1, ge=2.0, le=10.0),
+    max_odds: float = Query(2.5, ge=2.0, le=20.0),
+    max_legs: int = Query(3, ge=1, le=3),
     max_slips: int = Query(1, ge=1, le=10),
     replace_pending: bool = Query(True),
     market: list[str] = Query(default=["goals"]),
@@ -134,12 +136,27 @@ async def generate_slips(
             want_goals=True,
             want_corners=True,
             min_combined_odds=min_odds,
+            max_combined_odds=max_odds,
+            max_legs=max_legs,
             limit=max_slips,
         )
     elif want_corners:
-        trebles = find_best_corner_trebles(playable, history, min_combined_odds=min_odds, limit=max_slips)
+        trebles = find_best_corner_trebles(
+            playable,
+            history,
+            min_combined_odds=min_odds,
+            max_combined_odds=max_odds,
+            max_legs=max_legs,
+            limit=max_slips,
+        )
     else:
-        trebles = find_best_trebles(playable, min_combined_odds=min_odds, limit=max_slips)
+        trebles = find_best_trebles(
+            playable,
+            min_combined_odds=min_odds,
+            max_combined_odds=max_odds,
+            max_legs=max_legs,
+            limit=max_slips,
+        )
 
     priced_pool = collect_priced_legs(playable, history, want_goals=want_goals, want_corners=want_corners)
     eligible_pool = build_leg_pool(playable, history, want_goals=want_goals, want_corners=want_corners)

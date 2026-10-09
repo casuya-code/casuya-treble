@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Casuya Treble",
-  description: "Over 1.5 trebles for BetPawa",
+  description: "Over 1.5 football slips (2.10–2.50) for BetPawa",
   applicationName: "Casuya Treble",
   appleWebApp: {
     capable: true,

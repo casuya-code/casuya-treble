@@ -8,9 +8,8 @@ import { api, VisitTotals } from "@/lib/api";
 import { isLoggedIn, takeSignedOutNotice } from "@/lib/auth";
 
 const EXAMPLE = [
-  { odds: 1.45 },
-  { odds: 1.52 },
-  { odds: 1.4 },
+  { odds: 1.48 },
+  { odds: 1.62 },
 ];
 
 function ExampleSlip() {

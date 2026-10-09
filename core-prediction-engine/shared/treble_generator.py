@@ -23,7 +23,7 @@ class CandidateLeg:
 
 @dataclass
 class TrebleCandidate:
-    legs: tuple[CandidateLeg, CandidateLeg, CandidateLeg]
+    legs: tuple[CandidateLeg, ...]
     combined_odds: float
     model_probability: float
     time_category: TimeCategory
@@ -60,11 +60,19 @@ def find_best_trebles(
     fixtures: list[Fixture],
     *,
     min_combined_odds: float = 3.0,
+    max_combined_odds: float | None = None,
+    max_legs: int = 3,
     limit: int = 5,
 ) -> list[TrebleCandidate]:
-    return trebles_from_legs(
-        collect_goals_legs(fixtures),
+    legs = collect_goals_legs(fixtures)
+    if max_combined_odds is None and max_legs == 3:
+        # Legacy path: same-day 3-leg trebles, kept for callers that want them.
+        return trebles_from_legs(legs, min_combined_odds=min_combined_odds, limit=limit)
+    return slips_from_legs(
+        legs,
         min_combined_odds=min_combined_odds,
+        max_combined_odds=max_combined_odds,
+        max_legs=max_legs,
         limit=limit,
     )
 
@@ -110,6 +118,66 @@ def trebles_from_legs(
     return short[:limit]
 
 
+def slips_from_legs(
+    legs: list[CandidateLeg],
+    *,
+    min_combined_odds: float = 2.1,
+    max_combined_odds: float | None = None,
+    max_legs: int = 3,
+    limit: int = 5,
+) -> list[TrebleCandidate]:
+    """Same-day slips of 1..max_legs legs whose combined odds land in the range.
+
+    This is the modern picker: a slip can be one, two, or three teams and every
+    fixture is used in at most one returned slip, so a team never repeats across
+    the slips of a single run. Nothing is marked forced — a slip only exists
+    when its combined odds really sit inside ``[min_combined_odds,
+    max_combined_odds]``.
+    """
+    if max_legs < 1 or max_combined_odds is None or max_combined_odds < min_combined_odds:
+        return []
+
+    by_day: dict[date, list[CandidateLeg]] = {}
+    for leg in legs:
+        by_day.setdefault(leg.kickoff_day, []).append(leg)
+
+    candidates: list[TrebleCandidate] = []
+    for day_legs in by_day.values():
+        for width in range(1, max_legs + 1):
+            for combo in itertools.combinations(day_legs, width):
+                if len({leg.fixture_id for leg in combo}) != width:
+                    continue  # the same match can never appear twice in one slip
+                combined = 1.0
+                model_p = 1.0
+                for leg in combo:
+                    combined *= leg.odds
+                    model_p *= leg.model_probability
+                if combined < min_combined_odds or combined > max_combined_odds:
+                    continue
+                candidates.append(
+                    TrebleCandidate(
+                        legs=combo,
+                        combined_odds=combined,
+                        model_probability=model_p,
+                        time_category=TimeCategory.ALL_DAY,
+                        forced=False,
+                    )
+                )
+
+    candidates.sort(key=lambda c: (c.model_probability, c.combined_odds), reverse=True)
+
+    chosen: list[TrebleCandidate] = []
+    used: set[UUID] = set()
+    for candidate in candidates:
+        if any(leg.fixture_id in used for leg in candidate.legs):
+            continue  # a team that already sits on a chosen slip is not repeated
+        chosen.append(candidate)
+        used.update(leg.fixture_id for leg in candidate.legs)
+        if len(chosen) >= limit:
+            break
+    return chosen
+
+
 def count_priced_legs(fixtures: list[Fixture]) -> int:
     return sum(1 for fixture in fixtures if _leg_from_fixture(fixture, priced_only=True) is not None)
 
@@ -137,15 +205,15 @@ def busiest_day_from_legs(legs: list[CandidateLeg]) -> int:
 
 
 def empty_treble_reason(*, stored: int, upcoming: int, priced: int, same_day: int, eligible: int = 0) -> str:
-    """Why generate found no treble. The desk turns the code into a sentence."""
+    """Why generate found no slip. The desk turns the code into a sentence."""
     if stored == 0:
         return "none_loaded"
     if upcoming == 0:
         return "all_started"
     if priced == 0:
         return "no_price"
-    if priced < 3 or same_day < 3:
-        return "spread_days" if priced >= 3 else "too_few"
-    if eligible < 3:
+    if same_day < 1:
+        return "spread_days"
+    if eligible < 1:
         return "below_floor"
     return "below_min"

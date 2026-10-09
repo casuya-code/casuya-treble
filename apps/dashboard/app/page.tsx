@@ -3,9 +3,9 @@ import { IndexView } from "@/components/IndexView";
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "Casuya Treble: Over 1.5 football trebles",
+  title: "Casuya Treble: Over 1.5 football slips",
   description:
-    "Casuya checks today's football matches and shows a treble only when the combined price is at least 3.00.",
+    "Casuya checks today's football matches and shows a slip of one to three teams only when the combined price lands between 2.10 and 2.50.",
 };
 
 export default function Page() {

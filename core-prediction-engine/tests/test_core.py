@@ -97,10 +97,9 @@ def test_empty_treble_reason_names_the_gap():
     assert empty_treble_reason(stored=0, upcoming=0, priced=0, same_day=0) == "none_loaded"
     assert empty_treble_reason(stored=12, upcoming=0, priced=0, same_day=0) == "all_started"
     assert empty_treble_reason(stored=8, upcoming=8, priced=0, same_day=0) == "no_price"
-    assert empty_treble_reason(stored=8, upcoming=2, priced=2, same_day=2) == "too_few"
-    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=2) == "spread_days"
+    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=0) == "spread_days"
+    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=8, eligible=0) == "below_floor"
     assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=8, eligible=8) == "below_min"
-    assert empty_treble_reason(stored=8, upcoming=8, priced=8, same_day=8, eligible=1) == "below_floor"
 
 
 def test_low_chance_or_short_price_is_left_out():

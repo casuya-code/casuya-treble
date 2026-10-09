@@ -1,6 +1,6 @@
 # Casuya Win — SuperWeb
 
-Modular football analytics: Poisson Over 1.5, ≥3.00 treble generation, slip tracking, and a BetPawa desk (manual placement).
+Modular football analytics: Poisson Over 1.5, 1–3 team slip generation priced 2.10–2.50, slip tracking, and a BetPawa desk (manual placement).
 
 ## Stack
 

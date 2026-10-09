@@ -8,7 +8,7 @@ from shared.poisson import edge_vs_market, implied_probability, poisson_pmf
 from shared.team_names import team_key
 from shared.team_strength import MIN_LEAGUE_GAMES, MIN_VENUE_GAMES, _avg, _weight
 from shared.time_buckets import local_day
-from shared.treble_generator import CandidateLeg, TrebleCandidate, trebles_from_legs
+from shared.treble_generator import CandidateLeg, TrebleCandidate, slips_from_legs, trebles_from_legs
 
 # The score files record the full match. About 45% of corners arrive before half-time.
 FIRST_HALF_SHARE = 0.45
@@ -150,14 +150,26 @@ def find_best_corner_trebles(
     history: list,
     *,
     min_combined_odds: float = 3.0,
+    max_combined_odds: float | None = None,
+    max_legs: int = 3,
     limit: int = 5,
 ) -> list[TrebleCandidate]:
-    # Reuse the same-day treble rules. The legs already cleared the corner price test.
-    return trebles_from_legs(
-        collect_corner_legs(fixtures, history),
+    legs = collect_corner_legs(fixtures, history)
+    if max_combined_odds is None and max_legs == 3:
+        # Legacy path: same-day 3-leg trebles, kept for callers that want them.
+        return trebles_from_legs(
+            legs,
+            min_combined_odds=min_combined_odds,
+            limit=limit,
+            unique_fixtures=True,
+        )
+    # Modern path: slips of 1..max_legs teams inside [min, max], no repeats.
+    return slips_from_legs(
+        legs,
         min_combined_odds=min_combined_odds,
+        max_combined_odds=max_combined_odds,
+        max_legs=max_legs,
         limit=limit,
-        unique_fixtures=True,
     )
 
 

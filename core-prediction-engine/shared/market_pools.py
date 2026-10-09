@@ -8,6 +8,7 @@ from shared.treble_generator import (
     TrebleCandidate,
     busiest_day_from_legs,
     collect_goals_legs,
+    slips_from_legs,
     trebles_from_legs,
 )
 
@@ -102,20 +103,36 @@ def find_mixed_trebles(
     want_goals: bool,
     want_corners: bool,
     min_combined_odds: float = 3.0,
+    max_combined_odds: float | None = None,
+    max_legs: int = 3,
     limit: int = 5,
 ) -> list[TrebleCandidate]:
-    """Best same-day trebles drawn from the requested markets together."""
+    """Best same-day slips drawn from the requested markets together.
+
+    When an explicit ``max_combined_odds`` is given the modern combiner runs:
+    slips of 1..max_legs teams inside ``[min, max]`` with no repeated teams
+    across slips. Without it, the legacy 3-leg treble picker is kept for
+    callers that still expect it.
+    """
     legs = build_leg_pool(
         fixtures,
         history,
         want_goals=want_goals,
         want_corners=want_corners,
     )
-    return trebles_from_legs(
+    if max_combined_odds is None and max_legs == 3:
+        return trebles_from_legs(
+            legs,
+            min_combined_odds=min_combined_odds,
+            limit=limit,
+            unique_fixtures=True,
+        )
+    return slips_from_legs(
         legs,
         min_combined_odds=min_combined_odds,
+        max_combined_odds=max_combined_odds,
+        max_legs=max_legs,
         limit=limit,
-        unique_fixtures=True,
     )
 
 

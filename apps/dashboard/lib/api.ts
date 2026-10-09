@@ -61,10 +61,15 @@ export type GenerateResult = {
 };
 
 export type GenerateOptions = {
+  /** Combined odds floor for a generated slip. Default 2.1. */
   minOdds?: number;
+  /** Combined odds ceiling for a generated slip. Default 2.5. */
+  maxOdds?: number;
+  /** Teams per slip: 1, 2, or 3. Default 3. */
+  maxLegs?: number;
   maxSlips?: number;
   replacePending?: boolean;
-  /** One market, or both together so a treble can mix legs. */
+  /** One market, or both together so a slip can mix legs. */
   market?: "goals" | "corners" | Array<"goals" | "corners">;
 };
 
@@ -280,11 +285,20 @@ export const api = {
     ),
   seedDemo: () => request<{ id: string }[]>("/ingestion/fixtures/seed-demo", { method: "POST" }),
   generateSlips: (opts: GenerateOptions = {}) => {
-    const { minOdds = 3, maxSlips = 1, replacePending = true, market = "goals" } = opts;
+    const {
+      minOdds = 2.1,
+      maxOdds = 2.5,
+      maxLegs = 3,
+      maxSlips = 1,
+      replacePending = true,
+      market = "goals",
+    } = opts;
     const requested = Array.isArray(market) ? market : [market];
     const markets = requested.length ? requested : ["goals" as const];
     const params = new URLSearchParams({
       min_odds: String(minOdds),
+      max_odds: String(maxOdds),
+      max_legs: String(maxLegs),
       max_slips: String(maxSlips),
       replace_pending: String(replacePending),
     });

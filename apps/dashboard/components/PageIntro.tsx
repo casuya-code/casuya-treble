@@ -6,8 +6,8 @@ type Props = {
 export function PageIntro({ pending, placed }: Props) {
   return (
     <section className="page-intro">
-      <h1>Over 1.5 trebles for BetPawa</h1>
-      <p>Generate a ≥3.00 acca, copy it, place manually, then mark when done.</p>
+      <h1>Over 1.5 football slips for BetPawa</h1>
+      <p>Generate a slip of one to three teams priced 2.10–2.50, copy it, place manually, then mark when done.</p>
       <div className="intro-stats">
         <span>
           <strong>{pending}</strong> pending
