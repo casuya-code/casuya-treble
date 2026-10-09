@@ -8,7 +8,7 @@ from shared.poisson import prob_over_15
 from shared.time_buckets import local_day
 
 # A leg must clear both bars before it can sit on a treble.
-MIN_LEG_PROBABILITY = 0.85
+MIN_LEG_PROBABILITY = 0.80
 MIN_LEG_ODDS = 1.20
 
 
