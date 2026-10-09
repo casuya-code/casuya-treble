@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from shared.betpawa_client import extract_fh_corner_overs
-from shared.corners import corner_leg, estimate_first_half_corners, prob_over_line
+from shared.corners import _priced_lines, corner_leg, estimate_first_half_corners, prob_over_line
 from shared.football_data import parse_football_data_csv
 from shared.models import Fixture
 
@@ -21,7 +21,7 @@ E0,15/08/2025,15:00,Arsenal,Chelsea,2,1,7,3
     assert rows[0].away_corners == 3
 
 
-def test_first_half_price_is_read_from_the_25_and_35_lines():
+def test_every_offered_first_half_corner_line_is_read():
     event = {
         "markets": [
             {
@@ -30,11 +30,22 @@ def test_first_half_price_is_read_from_the_25_and_35_lines():
                     {"specifier": {"total": "3.5"}, "prices": [{"name": "Over", "odds": 1.54}, {"name": "Under", "odds": 2.05}]},
                     {"specifier": {"total": "4.5"}, "prices": [{"name": "Over", "odds": 2.16}]},
                     {"specifier": {"total": "2.5"}, "prices": [{"name": "Over"}]},
+                    {"specifier": {"total": "7.5"}, "prices": [{"name": "Over", "odds": 5.0}]},
                 ],
             }
         ]
     }
-    assert extract_fh_corner_overs(event) == {"3.5": 1.54}
+    # 4.5 is a valid line now; 2.5 carries no price and 7.5 is not one we price.
+    assert extract_fh_corner_overs(event) == {"3.5": 1.54, "4.5": 2.16}
+
+
+def test_every_priced_line_reaches_the_picker():
+    fixture = _corners("Hosts", "Guests", None, None, 20)
+    fixture.fh_corner_over_35 = 1.5
+    fixture.fh_corner_over_45 = 1.9
+    fixture.fh_corner_over_55 = 2.6
+    fixture.fh_corner_over_65 = 4.2
+    assert _priced_lines(fixture) == [(3.5, 1.5), (4.5, 1.9), (5.5, 2.6), (6.5, 4.2)]
 
 
 def test_a_short_price_is_left_out_and_a_generous_line_is_kept():

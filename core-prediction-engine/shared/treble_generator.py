@@ -45,24 +45,49 @@ def _leg_from_fixture(fixture: Fixture, *, priced_only: bool = False) -> Candida
     )
 
 
-def find_best_trebles(
-    fixtures: list[Fixture],
-    *,
-    min_combined_odds: float = 3.0,
-    limit: int = 5,
-) -> list[TrebleCandidate]:
+def collect_goals_legs(fixtures: list[Fixture]) -> list[CandidateLeg]:
+    """Every fixture that clears the Over 1.5 Goals bars."""
     legs: list[CandidateLeg] = []
     for fixture in fixtures:
         leg = _leg_from_fixture(fixture)
         if leg is None:
             continue
         legs.append(leg)
+    return legs
 
+
+def find_best_trebles(
+    fixtures: list[Fixture],
+    *,
+    min_combined_odds: float = 3.0,
+    limit: int = 5,
+) -> list[TrebleCandidate]:
+    return trebles_from_legs(
+        collect_goals_legs(fixtures),
+        min_combined_odds=min_combined_odds,
+        limit=limit,
+    )
+
+
+def trebles_from_legs(
+    legs: list[CandidateLeg],
+    *,
+    min_combined_odds: float,
+    limit: int,
+    unique_fixtures: bool = False,
+) -> list[TrebleCandidate]:
+    """Same-day pairing for legs that already cleared their market bar.
+
+    unique_fixtures keeps a fixture from appearing twice in one treble, which
+    matters when a fixture qualified in more than one market.
+    """
     qualifying: list[TrebleCandidate] = []
     short: list[TrebleCandidate] = []
     for combo in itertools.combinations(legs, 3):
         days = {leg.kickoff_day for leg in combo}
         if len(days) != 1:
+            continue
+        if unique_fixtures and len({leg.fixture_id for leg in combo}) != 3:
             continue
         combined_odds = combo[0].odds * combo[1].odds * combo[2].odds
         model_p = combo[0].model_probability * combo[1].model_probability * combo[2].model_probability
@@ -99,6 +124,14 @@ def busiest_day_count(fixtures: list[Fixture]) -> int:
         leg = _leg_from_fixture(fixture, priced_only=True)
         if leg is None:
             continue
+        counts[leg.kickoff_day] = counts.get(leg.kickoff_day, 0) + 1
+    return max(counts.values(), default=0)
+
+
+def busiest_day_from_legs(legs: list[CandidateLeg]) -> int:
+    """How many priced legs share the busiest single day, across any market."""
+    counts: dict[date, int] = {}
+    for leg in legs:
         counts[leg.kickoff_day] = counts.get(leg.kickoff_day, 0) + 1
     return max(counts.values(), default=0)
 

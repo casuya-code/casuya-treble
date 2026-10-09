@@ -64,7 +64,8 @@ export type GenerateOptions = {
   minOdds?: number;
   maxSlips?: number;
   replacePending?: boolean;
-  market?: "goals" | "corners";
+  /** One market, or both together so a treble can mix legs. */
+  market?: "goals" | "corners" | Array<"goals" | "corners">;
 };
 
 export type AuthUser = { id: string; email: string; is_admin: boolean };
@@ -144,6 +145,85 @@ export type BetPawaSourceStatus = {
   verify_url: string;
 };
 
+export type BbGateInfo = { gate: string; label: string; threshold: string };
+export type BbCheck = { passed: boolean; reason: string };
+export type BbTipStatus = "PENDING" | "WON" | "LOST" | "PUSH" | "AUTOMATED_REJECTED";
+export type BbTip = {
+  id: string;
+  status: BbTipStatus;
+  pick: string;
+  line: number;
+  over_odds: number | null;
+  model_total: number;
+  p_over: number;
+  edge: number;
+  created_at: string;
+  settled_at: string | null;
+  notes: string | null;
+};
+export type BbGateRun = {
+  passed: boolean;
+  passed_count: number;
+  ran_at: string;
+  checks: Record<string, BbCheck> | null;
+};
+export type BbGame = {
+  id: string;
+  espn_event_id: string;
+  tipoff_at: string;
+  home_team: string;
+  away_team: string;
+  status: string;
+  home_score: number | null;
+  away_score: number | null;
+  model: { total: number | null; p_over: number | null; edge: number | null } | null;
+  market_total: number | null;
+  result: "over" | "under" | "push" | null;
+  gate_run: BbGateRun | null;
+  tip: BbTip | null;
+};
+export type BbHealth = {
+  status: string;
+  enabled: boolean;
+  date: string;
+  games_today: number;
+  pending_tips: number;
+  last_scan_at: string | null;
+  last_scan_stats: Record<string, number | boolean | string | null> | null;
+  lock_minutes: number;
+  scan_minutes: number;
+  backfill: string;
+};
+export type BbGates = { gates: BbGateInfo[]; policy: string };
+export type BbAudit = {
+  window_days: number;
+  tips: number;
+  won: number;
+  lost: number;
+  push: number;
+  pending: number;
+  rejected: number;
+  hit_rate: number | null;
+  clv: { n: number; avg_points: number | null; beat_close_pct: number | null };
+};
+export type BbSlate = { date: string; count: number; games: BbGame[] };
+export type BbShadowRule = {
+  key: string;
+  label: string;
+  n: number;
+  won: number;
+  lost: number;
+  push: number;
+  hit_rate: number | null;
+  roi: number | null;
+  roi_n: number;
+  clv_n: number;
+  avg_clv: number | null;
+  beat_close_pct: number | null;
+};
+export type BbShadow = { games: number; rules: BbShadowRule[]; note: string };
+export type BbBacktest = { model_rows: number; candidate_rules: BbShadowRule[] };
+
 export const api = {
   health: () => request<HealthResponse>("/health", undefined, false),
   register: (email: string, password: string) =>
@@ -201,12 +281,14 @@ export const api = {
   seedDemo: () => request<{ id: string }[]>("/ingestion/fixtures/seed-demo", { method: "POST" }),
   generateSlips: (opts: GenerateOptions = {}) => {
     const { minOdds = 3, maxSlips = 1, replacePending = true, market = "goals" } = opts;
+    const requested = Array.isArray(market) ? market : [market];
+    const markets = requested.length ? requested : ["goals" as const];
     const params = new URLSearchParams({
       min_odds: String(minOdds),
       max_slips: String(maxSlips),
       replace_pending: String(replacePending),
-      market,
     });
+    for (const value of markets) params.append("market", value);
     return request<GenerateResult>(`/slips/generate?${params}`, { method: "POST" });
   },
   listSlips: (opts?: { days?: number; status?: SlipStatus }) => {
@@ -226,6 +308,13 @@ export const api = {
   publicHistory: () => request<PublicHistory>("/slips/history", undefined, false),
   recordVisit: (visitorId: string) =>
     request<VisitTotals>("/visits", { method: "POST", body: JSON.stringify({ visitor_id: visitorId }) }, false),
+  bbHealth: () => request<BbHealth>("/btips/health"),
+  bbGates: () => request<BbGates>("/btips/gates"),
+  bbGames: (date?: string) =>
+    request<BbSlate>(`/btips/games${date ? `?date=${encodeURIComponent(date)}` : ""}`),
+  bbAudit: (windowDays = 30) => request<BbAudit>(`/btips/audit?window_days=${windowDays}`),
+  bbShadow: () => request<BbShadow>("/btips/shadow"),
+  bbBacktest: () => request<BbBacktest>("/btips/backtest"),
 };
 
 export type VisitTotals = {

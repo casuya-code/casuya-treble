@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gateway.load_service import load_service_router
 from shared.admin_seed import ensure_admin_account
+from shared.basketball.scheduler import basketball_scan_loop
 from shared.config import APP_VERSION, settings
 from shared.database import engine, get_db, init_db
 from shared.models import PageVisit
@@ -25,6 +26,7 @@ odds = load_service_router("3-market-odds-monitor")
 slips = load_service_router("4-slip-generator-service")
 tracker = load_service_router("5-realtime-tracker-service")
 purger = load_service_router("6-database-purger")
+basketball = load_service_router("7-basketball-filter-service")
 
 
 @asynccontextmanager
@@ -32,8 +34,10 @@ async def lifespan(_app: FastAPI):
     await init_db()
     await ensure_admin_account()
     refresher = asyncio.create_task(score_refresh_loop())
+    hoops = asyncio.create_task(basketball_scan_loop())
     yield
     refresher.cancel()
+    hoops.cancel()
 
 
 app = FastAPI(
@@ -61,6 +65,7 @@ app.include_router(odds.router)
 app.include_router(slips.router)
 app.include_router(tracker.router)
 app.include_router(purger.router)
+app.include_router(basketball.router)
 
 
 class VisitIn(BaseModel):

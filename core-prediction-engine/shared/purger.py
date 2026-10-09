@@ -4,11 +4,19 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.config import settings
-from shared.models import Slip
+from shared.models import BBGateRun, Slip
 
 
 async def purge_old_slips(db: AsyncSession) -> int:
     cutoff = datetime.now(timezone.utc) - timedelta(days=settings.purge_days)
     result = await db.execute(delete(Slip).where(Slip.timestamp < cutoff))
+    await db.commit()
+    return result.rowcount or 0
+
+
+async def purge_old_basketball_runs(db: AsyncSession) -> int:
+    """Old gate-run audit rows only — games, lines and tips are retained."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.purge_days)
+    result = await db.execute(delete(BBGateRun).where(BBGateRun.ran_at < cutoff))
     await db.commit()
     return result.rowcount or 0

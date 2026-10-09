@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PublicHistoryPanel } from "@/components/PublicHistoryPanel";
 import { LangSwitch, MenuButton, useLandingLang } from "@/components/LandingLang";
 import { api, VisitTotals } from "@/lib/api";
@@ -71,11 +71,22 @@ function VisitLine() {
   }, []);
 
   const show = (value: number | undefined) => (value == null ? "–" : String(value));
+  const figures = [
+    [t.visitToday, counts?.today],
+    [t.visitYesterday, counts?.yesterday],
+    [t.visitWeek, counts?.week],
+    [t.visitYear, counts?.year],
+  ] as const;
 
   return (
-    <p className="visit-line">
-      {`${t.visitToday}=${show(counts?.today)} | ${t.visitYesterday}=${show(counts?.yesterday)} | ${t.visitWeek}=${show(counts?.week)} | ${t.visitYear}=${show(counts?.year)}`}
-    </p>
+    <dl className="visit-line">
+      {figures.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{show(value)}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -84,10 +95,20 @@ function LandingPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [signedOut, setSignedOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sticky, setSticky] = useState(false);
+  const heroAction = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     setLoggedIn(isLoggedIn());
     setSignedOut(takeSignedOutNotice());
+  }, []);
+
+  useEffect(() => {
+    const node = heroAction.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => setSticky(!entry.isIntersecting), { threshold: 0.4 });
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
 
   const primary = loggedIn
@@ -99,7 +120,7 @@ function LandingPage() {
   const quiet = loggedIn ? null : signedOut ? { href: "/register", label: t.create } : { href: "/login", label: t.signIn };
 
   return (
-    <div className="landing">
+    <div className={`landing ${sticky ? "sticky-on" : ""}`}>
       <header className="landing-wrap landing-top">
         <Link href="/" className="landing-brand">
           Casuya <span className="pos">Treble</span>
@@ -124,7 +145,7 @@ function LandingPage() {
             <h1>{t.h1}</h1>
             <p className="lead">{t.lead}</p>
             {signedOut ? <p className="note landing-note">{t.signedOut}</p> : null}
-            <Link className="ct-btn" href={primary.href}>
+            <Link className="ct-btn" href={primary.href} ref={heroAction}>
               {primary.label}
             </Link>
             {quiet ? (
@@ -179,7 +200,7 @@ function LandingPage() {
           </div>
         </section>
 
-        <section className="landing-wrap">
+        <section className="landing-wrap landing-close">
           <div className="cta">
             <h2>{signedOut ? t.ctaSignedOut : t.ctaT}</h2>
             <p>{signedOut ? t.ctaSignedOutP : t.ctaP}</p>
@@ -199,7 +220,7 @@ function LandingPage() {
         </div>
       </footer>
 
-      <div className="landing-sticky">
+      <div className="landing-sticky" hidden={!sticky}>
         <Link className="ct-btn" href={primary.href}>
           {primary.label}
         </Link>

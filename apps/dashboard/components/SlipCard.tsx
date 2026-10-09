@@ -45,13 +45,14 @@ function trebleKind(slip: Slip): StatusKind {
 type Props = {
   slip: Slip;
   featured?: boolean;
+  showGuide?: boolean;
   copied: boolean;
   loading: boolean;
   onCopy: () => void;
   onTogglePlaced: () => void;
 };
 
-export function SlipCard({ slip, featured, copied, loading, onCopy, onTogglePlaced }: Props) {
+export function SlipCard({ slip, featured, showGuide, copied, loading, onCopy, onTogglePlaced }: Props) {
   const { lang, t } = useLandingLang();
   const [copiedName, setCopiedName] = useState<string | null>(null);
 
@@ -128,6 +129,7 @@ export function SlipCard({ slip, featured, copied, loading, onCopy, onTogglePlac
               <button
                 type="button"
                 className="btn ghost leg-copy"
+                aria-label={t.copyNameHint}
                 onClick={() => void copyMatchName(leg.fixture_id, `${leg.home_team} v ${leg.away_team}`)}
               >
                 {copiedName === `fail:${leg.fixture_id}`
@@ -149,7 +151,7 @@ export function SlipCard({ slip, featured, copied, loading, onCopy, onTogglePlac
 
       <div className="slip-actions">
         <pre className="copy-preview">{slip.betpawa_copy_text}</pre>
-        <p className="copy-help">{t.copyHelp}</p>
+        {showGuide ? <p className="copy-help">{t.copyHelp}</p> : null}
         <button type="button" className="btn primary" onClick={onCopy}>
           {copied ? t.copied : t.copySlip}
         </button>

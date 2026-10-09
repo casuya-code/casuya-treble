@@ -8,13 +8,19 @@ from shared.poisson import edge_vs_market, implied_probability, poisson_pmf
 from shared.team_names import team_key
 from shared.team_strength import MIN_LEAGUE_GAMES, MIN_VENUE_GAMES, _avg, _weight
 from shared.time_buckets import local_day
-from shared.treble_generator import CandidateLeg, TrebleCandidate
+from shared.treble_generator import CandidateLeg, TrebleCandidate, trebles_from_legs
 
 # The score files record the full match. About 45% of corners arrive before half-time.
 FIRST_HALF_SHARE = 0.45
 MIN_CORNER_ODDS = 1.20
 NAIROBI = ZoneInfo("Africa/Nairobi")
-MARKET = {2.5: "Over 2.5 Corners 1H", 3.5: "Over 3.5 Corners 1H"}
+
+# BetPawa quotes whichever 1H lines it likes; 2.5 has since disappeared in
+# favour of 4.5 and 5.5. Every line the book offers stays in play so the
+# picker can take the one carrying the best edge.
+CORNER_LINES = ("2.5", "3.5", "4.5", "5.5", "6.5")
+LINE_FIELD = {line: f"fh_corner_over_{line.replace('.', '')}" for line in CORNER_LINES}
+MARKET = {float(line): f"Over {line} Corners 1H" for line in CORNER_LINES}
 
 
 def prob_over_line(lam: float, line: float) -> float:
@@ -82,16 +88,21 @@ def estimate_first_half_corners(
 
 
 def _priced_lines(fixture) -> list[tuple[float, float]]:
+    """Every 1H corner line the book quoted, as (line, odds)."""
     lines = []
-    if fixture.fh_corner_over_25 and fixture.fh_corner_over_25 > 1.0:
-        lines.append((2.5, float(fixture.fh_corner_over_25)))
-    if fixture.fh_corner_over_35 and fixture.fh_corner_over_35 > 1.0:
-        lines.append((3.5, float(fixture.fh_corner_over_35)))
+    for line in CORNER_LINES:
+        odds = getattr(fixture, LINE_FIELD[line], None)
+        if odds and odds > 1.0:
+            lines.append((float(line), float(odds)))
     return lines
 
 
 def corner_leg(fixture, history: list) -> CandidateLeg | None:
-    """The 2.5 or 3.5 line where the model chance is higher than the price implies."""
+    """The corner line where the model chance is higher than the price implies.
+
+    Every line the book quoted stays in play, so a quiet fixture priced at 5.5
+    can beat a busy one priced at 3.5 whenever the edge is larger.
+    """
     expected = estimate_first_half_corners(
         history,
         home_team=fixture.home_team,
@@ -123,6 +134,17 @@ def corner_leg(fixture, history: list) -> CandidateLeg | None:
     )
 
 
+def collect_corner_legs(fixtures: list, history: list) -> list[CandidateLeg]:
+    """Every fixture where a corner line carries a positive edge."""
+    legs: list[CandidateLeg] = []
+    for fixture in fixtures:
+        leg = corner_leg(fixture, history)
+        if leg is None:
+            continue
+        legs.append(leg)
+    return legs
+
+
 def find_best_corner_trebles(
     fixtures: list,
     history: list,
@@ -130,42 +152,14 @@ def find_best_corner_trebles(
     min_combined_odds: float = 3.0,
     limit: int = 5,
 ) -> list[TrebleCandidate]:
-    legs = []
-    for fixture in fixtures:
-        leg = corner_leg(fixture, history)
-        if leg is not None:
-            legs.append(leg)
     # Reuse the same-day treble rules. The legs already cleared the corner price test.
-    return _trebles_from_legs(legs, min_combined_odds=min_combined_odds, limit=limit)
+    return trebles_from_legs(
+        collect_corner_legs(fixtures, history),
+        min_combined_odds=min_combined_odds,
+        limit=limit,
+        unique_fixtures=True,
+    )
 
 
-def _trebles_from_legs(legs: list[CandidateLeg], *, min_combined_odds: float, limit: int) -> list[TrebleCandidate]:
-    """Same pairing as the goals treble, for legs that are already eligible."""
-    import itertools
-
-    from shared.models import TimeCategory
-
-    qualifying: list[TrebleCandidate] = []
-    short: list[TrebleCandidate] = []
-    for combo in itertools.combinations(legs, 3):
-        days = {leg.kickoff_day for leg in combo}
-        if len(days) != 1:
-            continue
-        combined_odds = combo[0].odds * combo[1].odds * combo[2].odds
-        model_p = combo[0].model_probability * combo[1].model_probability * combo[2].model_probability
-        candidate = TrebleCandidate(
-            legs=combo,
-            combined_odds=combined_odds,
-            model_probability=model_p,
-            time_category=TimeCategory.ALL_DAY,
-            forced=combined_odds < min_combined_odds,
-        )
-        if candidate.forced:
-            short.append(candidate)
-        else:
-            qualifying.append(candidate)
-    if qualifying:
-        qualifying.sort(key=lambda item: (item.model_probability, item.combined_odds), reverse=True)
-        return qualifying[:limit]
-    short.sort(key=lambda item: (item.combined_odds, item.model_probability), reverse=True)
-    return short[:limit]
+# Kept under the old name for anything still importing the private helper.
+_trebles_from_legs = trebles_from_legs

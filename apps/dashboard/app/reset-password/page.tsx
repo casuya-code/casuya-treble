@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState, Suspense } from "react";
+import { FormEvent, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/AuthShell";
 import { useLandingLang } from "@/components/LandingLang";
@@ -14,9 +14,12 @@ function ResetForm() {
   const tokenFromUrl = params.get("token") ?? "";
 
   const [token, setToken] = useState(tokenFromUrl);
-  useEffect(() => {
+  // URL changed (e.g. a new reset link) — adjust during render, not in an effect.
+  const [seenToken, setSeenToken] = useState(tokenFromUrl);
+  if (tokenFromUrl !== seenToken) {
+    setSeenToken(tokenFromUrl);
     if (tokenFromUrl) setToken(tokenFromUrl);
-  }, [tokenFromUrl]);
+  }
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -7,6 +7,7 @@ import { StatusKind } from "@/components/StatusBadge";
 import { formatDay, Lang } from "@/lib/landingCopy";
 
 type Filter = StatusKind;
+type Market = "goals" | "corners";
 
 /** Waiting, then placed, then the result. All is the full list. */
 const FILTERS: Filter[] = ["PENDING", "PLACED", "WON", "LOST", "ALL"];
@@ -20,8 +21,6 @@ type Counts = {
 };
 
 type Props = {
-  email: string | null;
-  apiOk: boolean | null;
   isAdmin: boolean;
   loading: boolean;
   lang: Lang;
@@ -30,13 +29,14 @@ type Props = {
   dateFilter: string | null;
   matchDates: string[];
   showAlternatives: boolean;
-  cornerMarket: boolean;
+  wantGoals: boolean;
+  wantCorners: boolean;
   showTools: boolean;
   onFilter: (filter: Filter) => void;
   onDate: (day: string | null) => void;
   onGenerate: () => void;
   onAlternatives: (value: boolean) => void;
-  onCornerMarket: (value: boolean) => void;
+  onToggleMarket: (market: Market) => void;
   onRefresh: () => void;
   onToggleTools: () => void;
   onLogout: () => void;
@@ -44,8 +44,6 @@ type Props = {
 };
 
 export function DeskSide({
-  email,
-  apiOk,
   isAdmin,
   loading,
   lang,
@@ -54,13 +52,14 @@ export function DeskSide({
   dateFilter,
   matchDates,
   showAlternatives,
-  cornerMarket,
+  wantGoals,
+  wantCorners,
   showTools,
   onFilter,
   onDate,
   onGenerate,
   onAlternatives,
-  onCornerMarket,
+  onToggleMarket,
   onRefresh,
   onToggleTools,
   onLogout,
@@ -95,11 +94,23 @@ export function DeskSide({
         <p className="desk-label" id="desk-step-make">
           {t.stepMake}
         </p>
-        <div className="desk-choice" role="group" aria-label={t.stepMake}>
-          <button type="button" className={cornerMarket ? "" : "active"} onClick={() => onCornerMarket(false)}>
+        <div className="desk-choice" role="group" aria-label={t.markets}>
+          <button
+            type="button"
+            className={wantGoals ? "active" : ""}
+            aria-pressed={wantGoals}
+            disabled={wantGoals && !wantCorners}
+            onClick={() => onToggleMarket("goals")}
+          >
             {t.choiceGoals}
           </button>
-          <button type="button" className={cornerMarket ? "active" : ""} onClick={() => onCornerMarket(true)}>
+          <button
+            type="button"
+            className={wantCorners ? "active" : ""}
+            aria-pressed={wantCorners}
+            disabled={wantCorners && !wantGoals}
+            onClick={() => onToggleMarket("corners")}
+          >
             {t.choiceCorners}
           </button>
         </div>
@@ -116,6 +127,7 @@ export function DeskSide({
         </button>
       </section>
 
+      <div className="desk-scroll">
       <section className="desk-module" aria-labelledby="desk-step-slips">
         <p className="desk-label" id="desk-step-slips">
           {t.stepSlips}
@@ -136,7 +148,7 @@ export function DeskSide({
         </nav>
         {matchDates.length > 0 ? (
           <nav className="desk-nav" aria-label={t.matchDate}>
-            <p className="desk-label">{t.matchDate}</p>
+            <p className="desk-label desk-label-in">{t.matchDate}</p>
             <button type="button" className={dateFilter === null ? "active" : ""} onClick={() => onDate(null)}>
               <span>{t.allDates}</span>
             </button>
@@ -150,21 +162,10 @@ export function DeskSide({
         <button type="button" className="desk-text" disabled={loading} onClick={onRefresh}>
           {t.refresh}
         </button>
-      </section>
-
-      <section className="desk-module desk-account" aria-labelledby="desk-step-account">
-        <p className="desk-label" id="desk-step-account">
-          {t.stepAccount}
-        </p>
-        <LangSwitch />
-        {email ? <span className="user-email">{email}</span> : null}
-        <div className="desk-account-row">
-          <span className={`status-chip ${apiOk === true ? "ok" : apiOk === false ? "bad" : ""}`}>
-            {apiOk === true ? t.connected : apiOk === false ? t.offline : "…"}
-          </span>
-          <button type="button" className="desk-text" onClick={onLogout}>
-            {t.logOut}
-          </button>
+        <div className="desk-quiet">
+          <Link href="/hoops" className="desk-text">
+            {t.hoops}
+          </Link>
         </div>
       </section>
 
@@ -179,6 +180,17 @@ export function DeskSide({
           {showTools ? tools : null}
         </div>
       ) : null}
+      </div>
+
+      <section className="desk-module desk-account" aria-labelledby="desk-step-account">
+        <p className="desk-label" id="desk-step-account">
+          {t.stepAccount}
+        </p>
+        <LangSwitch />
+        <button type="button" className="desk-text" onClick={onLogout}>
+          {t.logOut}
+        </button>
+      </section>
     </aside>
   );
 }

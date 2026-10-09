@@ -4,19 +4,21 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 import httpx
 
 from shared.config import settings
+from shared.corners import CORNER_LINES
 from shared.league_names import league_key
 
 OVER_UNDER_FT_MARKET = "5000"
 FH_CORNERS_MARKET = "1096784"
+# The event endpoint returns no markets, so the list view has to ask for both.
+LIST_MARKET_TYPES = (OVER_UNDER_FT_MARKET, FH_CORNERS_MARKET)
 TOTAL_GOALS_LINE = "1.5"
-CORNER_LINES = ("2.5", "3.5")
 NEAR_DAYS = 2
 RATED_DAYS = 7
 PAGE_SIZE = 60
@@ -32,6 +34,8 @@ class BetPawaOver15:
     league: str
     kickoff_at: datetime
     decimal_odds: float
+    #: 1H corner Over prices keyed by line, e.g. {"4.5": 1.52}.
+    fh_corner_overs: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -135,6 +139,8 @@ def parse_events_payload(payload: dict | list) -> list[BetPawaOver15]:
         if odds is None:
             continue
 
+        corners = extract_fh_corner_overs(event)
+
         participants = event["participants"]
         home = _participant_name(participants, 1)
         away = _participant_name(participants, 2)
@@ -150,6 +156,7 @@ def parse_events_payload(payload: dict | list) -> list[BetPawaOver15]:
                 league=_league_from_event(event),
                 kickoff_at=_parse_start(str(event["startTime"])),
                 decimal_odds=odds,
+                fh_corner_overs=corners,
             )
         )
 
@@ -167,7 +174,7 @@ def _build_list_query(*, take: int, skip: int, popular_only: bool) -> str:
                     "popular": popular_only,
                     "hasOdds": True,
                 },
-                "view": {"marketTypes": [OVER_UNDER_FT_MARKET]},
+                "view": {"marketTypes": list(LIST_MARKET_TYPES)},
                 "skip": skip,
                 "take": take,
                 "sort": {"startTime": "ASC"},
@@ -247,7 +254,13 @@ def keep_for_import(row: BetPawaOver15, now: datetime | None = None) -> bool:
     return kickoff <= moment + timedelta(days=NEAR_DAYS)
 
 
-async def _fetch_page(*, take: int, skip: int, popular_only: bool) -> list[BetPawaOver15]:
+async def _fetch_page(*, take: int, skip: int, popular_only: bool) -> tuple[list[BetPawaOver15], int]:
+    """One page of fixtures, plus how many events BetPawa actually sent.
+
+    The raw count matters: parse drops events with no Over 1.5 price, so the
+    parsed length alone would make paging think the first page was a partial
+    one and stop before reaching the rest of the card.
+    """
     q = _build_list_query(take=take, skip=skip, popular_only=popular_only)
     url = f"{settings.betpawa_base_url.rstrip('/')}/api/sportsbook/v4/events/lists/by-queries?q={q}"
     async with httpx.AsyncClient(timeout=45.0) as client:
@@ -257,7 +270,8 @@ async def _fetch_page(*, take: int, skip: int, popular_only: bool) -> list[BetPa
         payload = response.json()
     if isinstance(payload, dict) and payload.get("error"):
         raise BetPawaError(f"BetPawa API error: {payload.get('error')}")
-    return parse_events_payload(payload)
+    raw_ids = {str(event["id"]) for event in _iter_event_nodes(payload)}
+    return parse_events_payload(payload), len(raw_ids)
 
 
 async def fetch_football_over_15(
@@ -269,26 +283,42 @@ async def fetch_football_over_15(
     """Upcoming Over 1.5 prices. The default read also keeps rated leagues a week ahead."""
     if take is not None or skip or popular_only:
         take_n = take if take is not None else settings.betpawa_fetch_take
-        return await _fetch_page(take=take_n, skip=skip, popular_only=popular_only)
+        rows, _raw = await _fetch_page(take=take_n, skip=skip, popular_only=popular_only)
+        return rows
 
     now = datetime.now(timezone.utc)
     chosen: list[BetPawaOver15] = []
     seen: set[str] = set()
     for page in range(MAX_PAGES):
-        rows = await _fetch_page(take=PAGE_SIZE, skip=page * PAGE_SIZE, popular_only=False)
-        if not rows:
+        rows, raw = await _fetch_page(take=PAGE_SIZE, skip=page * PAGE_SIZE, popular_only=False)
+        if raw == 0:
             break
-        latest = max(row.kickoff_at for row in rows)
-        if latest.tzinfo is None:
-            latest = latest.replace(tzinfo=timezone.utc)
         for row in rows:
             if row.external_id in seen or not keep_for_import(row, now):
                 continue
             seen.add(row.external_id)
             chosen.append(row)
-        if len(rows) < PAGE_SIZE or latest > now + timedelta(days=RATED_DAYS):
+        if _page_is_last(rows, raw, PAGE_SIZE, now):
             break
     return chosen
+
+
+def _page_is_last(rows: list[BetPawaOver15], raw_count: int, take: int, now: datetime) -> bool:
+    """True when the board has nothing further worth reading.
+
+    `raw_count` is what BetPawa sent, not what parsed. Events without an
+    Over 1.5 price are dropped while parsing, so a page of 60 can parse down
+    to 55 — measuring against `take` would then read a full page as the end
+    of the card and stop before the corner prices further down it.
+    """
+    if raw_count < take:
+        return True
+    latest = max((row.kickoff_at for row in rows), default=None)
+    if latest is None:
+        return False
+    if latest.tzinfo is None:
+        latest = latest.replace(tzinfo=timezone.utc)
+    return latest > now + timedelta(days=RATED_DAYS)
 
 
 def parse_event_score(payload: dict) -> BetPawaScore | None:

@@ -1,20 +1,30 @@
+/* Landing follows mistral.ai: warm cream page, tonal panels, hairline rules,
+   near-black CTAs, orange brand accents, medium-weight display type. */
 .landing {
-  --bg: #0b0f14;
-  --card: #121821;
-  --line: #1f2a38;
-  --text: #e6edf3;
-  --muted: #8b98a9;
-  --green: #22c55e;
-  --red: #ef4444;
-  --amber: #f59e0b;
+  --bg: #fbfbf8;
+  --card: #f5f4ef;
+  --inset: #f2f1e8;
+  --line: #e4e3de;
+  --line-strong: #c9c9c4;
+  --text: #18181b;
+  --muted: #71717a;
+  --brand: #fa500f;
+  --green: #318e68;
+  --red: #e51300;
+  --amber: #a77201;
+  --ink: #18181b;
+  --on-ink: #fafaf4;
   --sans: var(--font-inter), Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font: 16px/1.55 var(--sans);
-  padding-bottom: 84px;
+  padding-bottom: 28px;
   -webkit-font-smoothing: antialiased;
+  /* The full-bleed 100vw header rule below is wider than the viewport when a
+     scrollbar is present; clip instead of scroll so it never adds a scrollbar. */
+  overflow-x: clip;
 }
 
 .landing h1,
@@ -22,7 +32,8 @@
 .landing h3 {
   font-family: var(--sans);
   color: var(--text);
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .landing a {
@@ -37,65 +48,83 @@
 }
 
 .landing-wrap {
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
 .landing section {
-  padding: 52px 0;
+  padding: 36px 0;
 }
 
 .landing section.landing-wrap {
-  padding-left: 20px;
-  padding-right: 20px;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 .landing h1 {
-  font-size: clamp(2rem, 7vw, 3.4rem);
-  line-height: 1.08;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  max-width: 14ch;
+  font-size: clamp(2.4rem, 7vw, 4.5rem);
+  line-height: 1.02;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  max-width: 15ch;
   margin: 0;
 }
 
 .landing h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: clamp(1.6rem, 3.5vw, 2.5rem);
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   margin: 0 0 8px;
 }
 
 .landing .lead {
   color: var(--muted);
-  max-width: 56ch;
-  margin: 16px 0 0;
+  max-width: 52ch;
+  margin: 20px 0 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
 }
 
 .landing .ct-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   min-height: 48px;
-  padding: 0 28px;
-  background: var(--green);
-  color: #04210f;
+  padding: 0 26px;
+  background: var(--ink);
+  color: var(--on-ink);
   font-family: var(--sans);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 1rem;
-  border-radius: 10px;
+  letter-spacing: -0.01em;
+  border-radius: 6px;
   text-decoration: none;
   border: 0;
   box-shadow: none;
-  transition: transform 0.15s, filter 0.15s;
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease;
+}
+
+.landing .ct-btn::after {
+  content: "→";
+  font-family: var(--mono);
+  font-size: 0.95em;
+  transition: transform 0.18s ease;
 }
 
 .landing .ct-btn:hover {
-  filter: brightness(1.08);
-  background: var(--green);
-  color: #04210f;
-  border: 0;
+  background: var(--on-ink);
+  color: var(--ink);
   text-decoration: none;
+}
+
+.landing .ct-btn:hover::after {
+  transform: translateX(4px);
 }
 
 .landing .ct-btn:active {
@@ -103,27 +132,56 @@
 }
 
 .landing :focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--brand);
   outline-offset: 3px;
 }
 
-.landing-top {
-  position: relative;
+.landing .landing-top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
-  padding-top: 20px;
+  padding-top: 0;
   padding-bottom: 0;
+  background: transparent;
+  border-bottom: 0;
+}
+
+/* Full-bleed cream bar + hairline under the header, the way mistral.ai rules off its nav. */
+.landing .landing-top::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .landing-brand {
-  font-size: 1.1rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding-right: 20px;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .landing .pos {
   color: var(--green);
+}
+
+.landing-brand .pos {
+  color: var(--brand);
 }
 
 .landing .neg {
@@ -132,8 +190,9 @@
 
 .landing .lang {
   display: flex;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
   overflow: hidden;
   flex: 0 0 auto;
 }
@@ -141,24 +200,29 @@
 .landing .lang button {
   background: none;
   border: 0;
+  border-right: 1px solid var(--line);
   box-shadow: none;
   color: var(--muted);
-  font: 600 0.85rem var(--sans);
-  padding: 0 14px;
-  min-height: 44px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 16px;
+  min-height: 56px;
   border-radius: 0;
   cursor: pointer;
 }
 
 .landing .lang button:hover {
-  background: none;
-  border: 0;
+  background: var(--card);
+  border-color: var(--line);
   color: var(--text);
 }
 
 .landing .lang button[aria-pressed="true"] {
-  background: var(--card);
-  color: var(--green);
+  background: var(--ink);
+  color: var(--on-ink);
 }
 
 .landing section.landing-hero {
@@ -172,14 +236,16 @@
 }
 
 .landing-quiet {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
   margin-top: 14px;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .landing-quiet:hover {
-  color: var(--text);
+  color: var(--brand);
 }
 
 .landing-note {
@@ -189,13 +255,17 @@
 .landing .slip {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 22px;
+  border-radius: 8px;
+  padding: 24px;
 }
 
 .landing .slip-tag {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   margin-bottom: 14px;
   display: block;
 }
@@ -205,7 +275,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 12px 0;
+  padding: 13px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -216,18 +286,19 @@
 }
 
 .landing .leg b {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .landing .odd {
   font-family: var(--mono);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .landing .tear {
-  border-top: 2px dashed var(--line);
-  margin: 0 -22px;
+  border-top: 1px dashed var(--line-strong);
+  margin: 0 -24px;
   position: relative;
 }
 
@@ -235,35 +306,37 @@
 .landing .tear::after {
   content: "";
   position: absolute;
-  top: -11px;
-  width: 20px;
-  height: 20px;
+  top: -9px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--bg);
   border: 1px solid var(--line);
 }
 
 .landing .tear::before {
-  left: -11px;
+  left: -10px;
 }
 
 .landing .tear::after {
-  right: -11px;
+  right: -10px;
 }
 
 .landing .calc {
   font-family: var(--mono);
   color: var(--muted);
   font-size: 0.9rem;
-  margin: 18px 0 0;
+  margin: 20px 0 0;
 }
 
 .landing .total {
   font-family: var(--mono);
-  font-weight: 700;
-  font-size: 3rem;
-  color: var(--green);
-  line-height: 1.1;
+  font-weight: 600;
+  font-size: clamp(2.5rem, 7vw, 3.25rem);
+  color: var(--text);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
 }
 
 .landing .small {
@@ -273,32 +346,39 @@
 
 .landing .steps {
   display: grid;
-  gap: 14px;
+  gap: 0;
   margin-top: 24px;
+  border-top: 1px solid var(--line);
 }
 
 .landing .step {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 20px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 20px 0;
 }
 
 .landing .step .n {
   font-family: var(--mono);
-  color: var(--green);
-  font-weight: 700;
+  color: var(--brand);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
 }
 
 .landing .step h3 {
-  font-size: 1.05rem;
-  margin: 6px 0 4px;
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 8px 0 4px;
 }
 
 .landing .step p {
   color: var(--muted);
   font-size: 0.95rem;
   margin: 0;
+  max-width: 46ch;
 }
 
 .landing .tiles {
@@ -311,20 +391,27 @@
 .landing .tile {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 8px;
+  padding: 18px;
 }
 
 .landing .tile span {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   display: block;
 }
 
 .landing .tile b {
   font-family: var(--mono);
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .landing .tile.sub {
@@ -333,14 +420,19 @@
 
 .landing .group {
   margin: 28px 0 10px;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
 }
 
 .landing .note {
-  border-left: 3px solid var(--amber);
+  border-left: 3px solid var(--brand);
   background: var(--card);
   padding: 12px 16px;
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 6px 6px 0;
   color: var(--muted);
   font-size: 0.92rem;
   margin: 12px 0;
@@ -350,7 +442,7 @@
 .landing .single {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   margin-bottom: 12px;
   overflow: hidden;
 }
@@ -371,30 +463,33 @@
 }
 
 .landing .badge {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 6px;
 }
 
 .landing .badge.won {
-  background: rgba(34, 197, 94, 0.14);
-  color: var(--green);
+  background: #ddf8ee;
+  color: #055737;
 }
 
 .landing .badge.lost {
-  background: rgba(239, 68, 68, 0.14);
+  background: #fff0eb;
   color: var(--red);
 }
 
 .landing .badge.wait {
-  background: rgba(245, 158, 11, 0.14);
+  background: #fff4d2;
   color: var(--amber);
 }
 
 .landing .badge.forced {
-  background: rgba(249, 115, 22, 0.16);
-  color: #fdba74;
+  background: rgba(250, 80, 15, 0.12);
+  color: var(--brand);
 }
 
 .landing .sum-left {
@@ -406,8 +501,10 @@
 
 .landing .sum-odds {
   font-family: var(--mono);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.3rem;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .landing .chev {
@@ -456,11 +553,15 @@
 .landing .row .o {
   font-family: var(--mono);
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .landing .chip {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-align: right;
 }
 
@@ -471,12 +572,16 @@
 }
 
 .landing .trust div {
-  border-top: 2px solid var(--green);
-  padding-top: 12px;
+  border-top: 2px solid var(--brand);
+  padding-top: 14px;
 }
 
 .landing .trust b {
   display: block;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-size: 1.05rem;
+  margin-bottom: 4px;
 }
 
 .landing .trust span {
@@ -488,13 +593,14 @@
   text-align: center;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 44px 20px;
+  border-radius: 8px;
+  padding: 56px 24px;
 }
 
 .landing .cta p {
   color: var(--muted);
-  margin: 8px 0 24px;
+  margin: 10px auto 26px;
+  max-width: 48ch;
 }
 
 .landing-footer {
@@ -506,6 +612,7 @@
 
 .landing-footer strong {
   color: var(--text);
+  font-weight: 500;
 }
 
 .landing-footer p {
@@ -513,9 +620,37 @@
 }
 
 .visit-line {
-  margin: 0 0 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0 0 16px;
+}
+
+.visit-line div {
+  min-width: 0;
+}
+
+.visit-line dt {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.visit-line dd {
+  margin: 4px 0 0;
   color: var(--text);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.landing.sticky-on {
+  padding-bottom: 84px;
 }
 
 .landing-sticky {
@@ -524,24 +659,63 @@
   right: 0;
   bottom: 0;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-  background: rgba(11, 15, 20, 0.92);
+  background: rgba(251, 251, 248, 0.94);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--line);
   z-index: 10;
 }
 
+.landing-sticky[hidden] {
+  display: none;
+}
+
 .landing-sticky .ct-btn {
   width: 100%;
+  max-width: 480px;
 }
 
 body.app-body:has(.landing) {
-  background: #0b0f14;
+  background: #fbfbf8;
 }
 
 @media (min-width: 700px) {
-  .landing .steps,
+  .landing .steps {
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 0;
+    border-top: 1px solid var(--line);
+  }
+
   .landing .trust {
     grid-template-columns: repeat(3, 1fr);
+    column-gap: 0;
+    border-top: 2px solid var(--brand);
+  }
+
+  .landing .step {
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+    padding: 22px 24px;
+  }
+
+  .landing .step:first-child {
+    padding-left: 0;
+  }
+
+  .landing .step:last-child {
+    border-right: 0;
+    padding-right: 0;
+  }
+
+  .landing .trust div {
+    padding: 14px 20px 0;
+  }
+
+  .landing .trust div:first-child {
+    padding-left: 0;
+  }
+
+  .landing .trust div:last-child {
+    padding-right: 0;
   }
 
   .landing .tiles {
@@ -549,7 +723,17 @@ body.app-body:has(.landing) {
   }
 }
 
+@media (max-width: 799px) {
+  .landing-close {
+    display: none;
+  }
+}
+
 @media (min-width: 800px) {
+  .landing section {
+    padding: 52px 0;
+  }
+
   .landing section.landing-hero {
     grid-template-columns: 1.1fr 0.9fr;
     align-items: center;
@@ -559,7 +743,8 @@ body.app-body:has(.landing) {
     display: none;
   }
 
-  .landing {
+  .landing,
+  .landing.sticky-on {
     padding-bottom: 0;
   }
 }

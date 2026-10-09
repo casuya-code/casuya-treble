@@ -10,12 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.betpawa_client import (
     BetPawaError,
-    extract_fh_corner_overs,
     fetch_event_payload,
     fetch_football_over_15,
     sportradar_match_id,
 )
 from shared.config import settings
+from shared.corners import LINE_FIELD
 from shared.database import get_db
 from shared.football_data import HistoricalSeedResult, ensure_historical_scores, import_football_data
 from shared.league_names import league_key
@@ -30,8 +30,20 @@ router = APIRouter(prefix="/ingestion", tags=["data-ingestion"])
 NAIROBI = ZoneInfo("Africa/Nairobi")
 
 
-async def _store_corner_prices(db, external_ids: list[str]) -> None:
-    """Save BetPawa's first-half 2.5 and 3.5 corner prices on rated matches."""
+def _set_corner_prices(fixture: Fixture, prices: dict[str, float]) -> None:
+    """First-half corner Over prices, keyed by line. Never blanks a price already held."""
+    for line, odds in prices.items():
+        field = LINE_FIELD.get(line)
+        if field and odds is not None and odds > 1.0:
+            setattr(fixture, field, float(odds))
+
+
+async def _store_sportradar_ids(db, external_ids: list[str]) -> None:
+    """Attach the Sportradar widget id used to read the live corner timeline.
+
+    Corner prices do not come from here: the event page carries no markets, so
+    the list view is the only place they are quoted.
+    """
     if not external_ids:
         return
     result = await db.execute(select(Fixture).where(Fixture.external_id.in_(external_ids)))
@@ -44,13 +56,10 @@ async def _store_corner_prices(db, external_ids: list[str]) -> None:
             try:
                 payload = await fetch_event_payload(event_id)
             except BetPawaError:
-                logger.warning("corner prices unavailable for %s", fixture.external_id)
+                logger.warning("event payload unavailable for %s", fixture.external_id)
                 return
         if payload is None:
             return
-        prices = extract_fh_corner_overs(payload)
-        fixture.fh_corner_over_25 = prices.get("2.5")
-        fixture.fh_corner_over_35 = prices.get("3.5")
         match_id = sportradar_match_id(payload)
         if match_id:
             fixture.sportradar_id = match_id
@@ -117,28 +126,29 @@ async def import_from_betpawa(
             if fixture.opening_odds_over_15 is None:
                 fixture.opening_odds_over_15 = row.decimal_odds
             fixture.closing_odds_over_15 = row.decimal_odds
+            _set_corner_prices(fixture, row.fh_corner_overs)
             updated += 1
         else:
-            db.add(
-                Fixture(
-                    external_id=row.external_id,
-                    home_team=row.home_team,
-                    away_team=row.away_team,
-                    league=row.league,
-                    kickoff_at=row.kickoff_at,
-                    opening_odds_over_15=row.decimal_odds,
-                    closing_odds_over_15=row.decimal_odds,
-                    lambda_home=1.4,
-                    lambda_away=1.1,
-                )
+            new_fixture = Fixture(
+                external_id=row.external_id,
+                home_team=row.home_team,
+                away_team=row.away_team,
+                league=row.league,
+                kickoff_at=row.kickoff_at,
+                opening_odds_over_15=row.decimal_odds,
+                closing_odds_over_15=row.decimal_odds,
+                lambda_home=1.4,
+                lambda_away=1.1,
             )
+            _set_corner_prices(new_fixture, row.fh_corner_overs)
+            db.add(new_fixture)
             imported += 1
 
     await db.commit()
     try:
-        await _store_corner_prices(db, [row.external_id for row in rows if league_key(row.league)])
+        await _store_sportradar_ids(db, [row.external_id for row in rows if league_key(row.league)])
     except Exception:
-        logger.exception("corner price fetch failed")
+        logger.exception("sportradar id fetch failed")
         await db.rollback()
     history = HistoricalSeedResult()
     try:

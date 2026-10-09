@@ -22,15 +22,18 @@ from shared.config import settings
 from shared.fixture_source import is_demo_fixture, prefer_real_fixtures, upcoming_fixtures
 from shared.practice_cleanup import purge_practice_if_real_loaded
 from shared.tracker_logic import recompute_all_slip_statuses, recompute_slip_statuses_for_user
-from shared.treble_generator import (
-    busiest_day_count,
-    count_eligible_legs,
-    count_priced_legs,
-    empty_treble_reason,
-    find_best_trebles,
-)
 from shared.corners import find_best_corner_trebles
+from shared.market_pools import (
+    CORNERS,
+    GOALS,
+    busiest_day_from_legs,
+    build_leg_pool,
+    collect_priced_legs,
+    find_mixed_trebles,
+    parse_markets,
+)
 from shared.team_strength import apply_form_lambdas
+from shared.treble_generator import empty_treble_reason, find_best_trebles
 from shared.weather import matches_held_for_weather
 
 router = APIRouter(prefix="/slips", tags=["slip-generator"])
@@ -103,29 +106,47 @@ async def generate_slips(
     min_odds: float = Query(3.0, ge=2.0, le=10.0),
     max_slips: int = Query(1, ge=1, le=10),
     replace_pending: bool = Query(True),
-    market: str = Query("goals"),
+    market: list[str] = Query(default=["goals"]),
 ) -> GenerateResult:
+    requested = parse_markets(market)
+    want_goals = GOALS in requested
+    want_corners = CORNERS in requested
+    both = want_goals and want_corners
+
     result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
     all_fixtures = list(result.scalars().all())
     upcoming = upcoming_fixtures(all_fixtures)
     fixtures = prefer_real_fixtures(upcoming)
-    corner_mode = market == "corners"
-    if not corner_mode:
+    if want_goals:
         apply_form_lambdas(fixtures, [row for row in all_fixtures if row.home_goals is not None])
+    history = [row for row in all_fixtures if row.home_corners is not None] if want_corners else []
     held = await matches_held_for_weather(fixtures)
     held_ids = {fixture.id for fixture, _reason in held}
     weather = [
         WeatherNote(match=f"{fixture.home_team} vs {fixture.away_team}", reason=reason) for fixture, reason in held
     ]
     playable = [fixture for fixture in fixtures if fixture.id not in held_ids]
-    if corner_mode:
-        history = [row for row in all_fixtures if row.home_corners is not None]
+
+    if both:
+        trebles = find_mixed_trebles(
+            playable,
+            history,
+            want_goals=True,
+            want_corners=True,
+            min_combined_odds=min_odds,
+            limit=max_slips,
+        )
+    elif want_corners:
         trebles = find_best_corner_trebles(playable, history, min_combined_odds=min_odds, limit=max_slips)
     else:
         trebles = find_best_trebles(playable, min_combined_odds=min_odds, limit=max_slips)
-    priced = count_priced_legs(playable)
-    eligible = count_eligible_legs(playable)
-    same_day = busiest_day_count(playable)
+
+    priced_pool = collect_priced_legs(playable, history, want_goals=want_goals, want_corners=want_corners)
+    eligible_pool = build_leg_pool(playable, history, want_goals=want_goals, want_corners=want_corners)
+    priced = len(priced_pool)
+    eligible = len(eligible_pool)
+    same_day = busiest_day_from_legs(priced_pool)
+
     if not trebles:
         reason = empty_treble_reason(
             stored=len(all_fixtures),
@@ -134,7 +155,7 @@ async def generate_slips(
             same_day=same_day,
             eligible=eligible,
         )
-        if corner_mode and playable:
+        if want_corners and not want_goals and playable:
             reason = "no_corner"
         elif weather and reason in {"too_few", "spread_days", "below_floor", "below_min"}:
             reason = "weather"
@@ -160,9 +181,8 @@ async def generate_slips(
         )
         pending_ids = []
         for slip in pending.scalars():
-            markets = {leg.market for leg in slip.legs}
-            is_corner = any("Corner" in name for name in markets)
-            if is_corner == corner_mode:
+            kinds = {CORNERS if "Corner" in leg.market else GOALS for leg in slip.legs} or {GOALS}
+            if kinds <= requested:
                 pending_ids.append(slip.slip_id)
         if pending_ids:
             await db.execute(delete(Slip).where(Slip.slip_id.in_(pending_ids)))

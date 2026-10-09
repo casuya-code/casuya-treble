@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from shared.betpawa_client import BetPawaOver15, keep_for_import, parse_events_payload
+from shared.betpawa_client import BetPawaOver15, _page_is_last, keep_for_import, parse_events_payload
 
 SAMPLE = {
     "responses": [
@@ -116,3 +116,17 @@ def test_a_price_row_without_odds_is_skipped():
     rows = parse_events_payload([event])
     assert len(rows) == 1
     assert rows[0].decimal_odds == 1.33
+
+
+def test_a_full_page_that_parses_short_is_not_the_end_of_the_card():
+    """60 events sent, 55 parsed once the priceless ones are dropped."""
+    now = datetime(2026, 10, 5, 8, 0, tzinfo=timezone.utc)
+    rows = [_row("Football / England / Premier League", 1)] * 55
+    assert _page_is_last(rows, raw_count=60, take=60, now=now) is False
+    assert _page_is_last(rows, raw_count=42, take=60, now=now) is True
+
+
+def test_paging_stops_once_the_card_reaches_past_the_horizon():
+    now = datetime(2026, 10, 5, 8, 0, tzinfo=timezone.utc)
+    rows = [_row("Football / England / Premier League", 9)]
+    assert _page_is_last(rows, raw_count=60, take=60, now=now) is True
