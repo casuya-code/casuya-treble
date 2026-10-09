@@ -160,3 +160,53 @@ def test_market_request_parsing():
     assert parse_markets(["Goals, Corners"]) == {"goals", "corners"}
     assert parse_markets(["betslip"]) == {"goals"}
     assert parse_markets([]) == {"goals"}
+
+
+def test_corner_slips_in_the_new_range_are_singles_and_do_not_repeat():
+    history = _corner_history()
+    fixtures = [_corner("1"), _corner("2")]
+
+    slips = find_best_corner_trebles(
+        fixtures,
+        history,
+        min_combined_odds=1.9,
+        max_combined_odds=2.5,
+        max_legs=3,
+        limit=5,
+    )
+
+    assert len(slips) == 2  # 2.4 sits in range on its own; 2.4 × 2.4 is too big
+    for slip in slips:
+        assert len(slip.legs) == 1
+        assert abs(slip.combined_odds - 2.4) < 1e-9
+        assert "Corner" in slip.legs[0].market
+        assert slip.forced is False
+
+
+def test_mixed_new_range_keeps_every_slip_inside_the_range_without_repeats():
+    history = _corner_history()
+    fixtures = [_goals("1"), _goals("2"), _goals("3"), _corner("1")]
+
+    slips = find_mixed_trebles(
+        fixtures,
+        history,
+        want_goals=True,
+        want_corners=True,
+        min_combined_odds=1.9,
+        max_combined_odds=2.5,
+        max_legs=3,
+        limit=5,
+    )
+
+    assert slips
+    used: set = set()
+    total_legs = 0
+    for slip in slips:
+        assert 1.9 <= slip.combined_odds <= 2.5
+        assert slip.forced is False
+        ids = [leg.fixture_id for leg in slip.legs]
+        assert len(set(ids)) == len(ids)  # no fixture twice inside a slip
+        used.update(ids)
+        total_legs += len(ids)
+    assert total_legs == len(used)  # no fixture shared across slips
+
