@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { useLandingLang } from "@/components/LandingLang";
@@ -166,6 +166,23 @@ function HoopsBody() {
 
   const gameCards: BbGame[] = slate?.games ?? [];
   const failedCount = gameCards.filter((g) => g.gate_run && !g.gate_run.passed).length;
+
+  /** Which of the 10 gates actually stopped the slate — the binding constraint. */
+  const blockers = useMemo(() => {
+    if (!gates) return [];
+    const rows = gates.gates.map((g) => ({ gate: g.gate, label: g.label, fails: 0, ran: 0 }));
+    for (const game of gameCards) {
+      const checks = game.gate_run?.checks;
+      if (!checks) continue;
+      for (const row of rows) {
+        const check = checks[row.gate];
+        if (!check) continue;
+        row.ran += 1;
+        if (!check.passed) row.fails += 1;
+      }
+    }
+    return rows.filter((row) => row.fails > 0).sort((a, b) => b.fails - a.fails);
+  }, [gates, gameCards]);
   const gateShorts = GATE_SHORT[lang];
   const activeRules = shadow?.rules.filter((r) => r.n > 0) ?? [];
 
@@ -263,20 +280,54 @@ function HoopsBody() {
             <span>{t.tipsWord}</span>
           </div>
         </div>
-        <p className="hoops-audit-note">{t.auditNote}</p>
-        <p className="hoops-clv">
-          <span>
-            <b>{audit ? signed(audit.clv.avg_points) : "—"}</b> {t.clvAvgWord}
-          </span>
-          <span>
-            <b>{audit && audit.clv.beat_close_pct != null ? pct(audit.clv.beat_close_pct, 0) : "—"}</b>{" "}
-            {t.beatCloseWord}
-          </span>
-          <span className="hoops-clv-n">
-            {t.clvWord} n={audit?.clv.n ?? 0}
-          </span>
+        <p className="hoops-audit-note">
+          {audit ? `${t.auditNote} ${fill(t.auditDecided, { n: audit.won + audit.lost })}` : t.auditNote}
         </p>
+        {audit && audit.clv.n > 0 ? (
+          <p className="hoops-clv">
+            <span>
+              <b>{signed(audit.clv.avg_points)}</b> {t.clvAvgWord}
+            </span>
+            <span>
+              <b>{audit.clv.beat_close_pct != null ? pct(audit.clv.beat_close_pct, 0) : "—"}</b>{" "}
+              {t.beatCloseWord}
+            </span>
+            <span className="hoops-clv-n">
+              {t.clvWord} n={audit.clv.n}
+            </span>
+          </p>
+        ) : audit ? (
+          <p className="hoops-clv">
+            <span>{t.clvWait}</span>
+          </p>
+        ) : null}
       </section>
+
+      {blockers.length > 0 ? (
+        <section className="hoops-blockers" aria-label={t.blockersTitle}>
+          <div className="hoops-rules-head">
+            <p className="hoops-label">{t.blockersTitle}</p>
+            <span className="hoops-rejected-tag">· {fill(t.blockersCount, { n: failedCount })}</span>
+          </div>
+          <ul className="hoops-blocker-list" role="list">
+            {blockers.map((row) => {
+              const share = row.ran > 0 ? Math.round((row.fails / row.ran) * 100) : 0;
+              return (
+                <li key={row.gate} className="hoops-blocker" role="listitem">
+                  <span className="hoops-blocker-name">{row.label}</span>
+                  <span className="hoops-blocker-track" aria-hidden="true">
+                    <span className="hoops-blocker-fill" style={{ width: `${share}%` }} />
+                  </span>
+                  <span className="hoops-blocker-count">
+                    {row.fails}/{row.ran}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="hoops-audit-note">{t.blockersNote}</p>
+        </section>
+      ) : null}
 
       {me?.is_admin ? (
         <section className="hoops-shadow" aria-label={t.shadowTitle}>

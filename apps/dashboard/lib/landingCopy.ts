@@ -377,6 +377,13 @@ export const SHELL = {
     showHistory: "Show history",
     hideHistory: "Hide history",
     historyNote: "Historical replay of finished games — the same rules, before any live record existed.",
+    blockersTitle: "Why nothing passed",
+    blockersNote:
+      "Bar length is the share of evaluated games each gate stopped. The longest bar is the real reason this date produced no tip.",
+    blockersCount: "{n} rejected",
+    clvWait: "CLV builds up only once a picked game finishes — no finished picks yet.",
+    auditDecided: "{n} games decided.",
+    oddsRangeNote: "Combined odds must land between 1.90 and 2.50.",
   },
   sw: {
     menu: "Menyu",
@@ -581,5 +588,12 @@ export const SHELL = {
     showHistory: "Onyesha historia",
     hideHistory: "Ficha historia",
     historyNote: "Mchezo wa kihistoria wa mechi zilizokamilika — kanuni hizo hizo, kabla ya rekodi ya moja kwa moja.",
+    blockersTitle: "Kwa nini hakuna kilichopita",
+    blockersNote:
+      "Urefu wa muda ni sehemu ya mechi zilizopimwa kila lango lilizozuia. Mrefu zaidi ndilo sababu halisi tarehe hii haikutoa pendekezo.",
+    blockersCount: "{n} zimekataliwa",
+    clvWait: "CLV huanza mechi moja ya pendekezo ikikamilika — bado hakuna iliyokamilika.",
+    auditDecided: "mechi {n} zimeamuliwa.",
+    oddsRangeNote: "Bei ya pamoja lazima iwe kati ya 1.90 na 2.50.",
   },
 } as const;

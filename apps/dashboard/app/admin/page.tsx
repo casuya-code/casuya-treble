@@ -26,12 +26,13 @@ function AdminPage() {
   const [section, setSection] = useState<"users" | "overview" | "tools">("users");
   const mounted = useRef(true);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // StrictMode mounts twice in dev; the setup pass must re-arm the flag.
+    mounted.current = true;
+    return () => {
       mounted.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -199,6 +200,10 @@ function AdminPage() {
                 <div className="stat-pill">
                   <strong>{overview.active_users}</strong>
                   <span>{t.active}</span>
+                </div>
+                <div className="stat-pill">
+                  <strong>{overview.admins}</strong>
+                  <span>{t.admin}</span>
                 </div>
                 <div className="stat-pill">
                   <strong>{overview.fixtures}</strong>

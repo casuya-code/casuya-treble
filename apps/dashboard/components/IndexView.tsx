@@ -129,6 +129,9 @@ function LandingPage() {
 
   const quiet = loggedIn ? null : signedOut ? { href: "/register", label: t.create } : { href: "/login", label: t.signIn };
 
+  /** Signed-in visitors get a direct route to the basketball filter; everyone else gets the auth link. */
+  const secondary = quiet ?? (loggedIn ? { href: "/hoops", label: t.hoops } : null);
+
   return (
     <div className={`landing ${sticky ? "sticky-on" : ""}`}>
       <header className="landing-wrap landing-top">
@@ -141,9 +144,9 @@ function LandingPage() {
           <Link className="ct-btn" href={primary.href} onClick={() => setMenuOpen(false)}>
             {primary.label}
           </Link>
-          {quiet ? (
-            <Link className="landing-quiet" href={quiet.href} onClick={() => setMenuOpen(false)}>
-              {quiet.label}
+          {secondary ? (
+            <Link className="landing-quiet" href={secondary.href} onClick={() => setMenuOpen(false)}>
+              {secondary.label}
             </Link>
           ) : null}
         </div>
@@ -158,10 +161,10 @@ function LandingPage() {
             <Link className="ct-btn" href={primary.href} ref={heroAction}>
               {primary.label}
             </Link>
-            {quiet ? (
+            {secondary ? (
               <div>
-                <Link className="landing-quiet" href={quiet.href}>
-                  {quiet.label}
+                <Link className="landing-quiet" href={secondary.href}>
+                  {secondary.label}
                 </Link>
               </div>
             ) : null}

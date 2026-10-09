@@ -182,7 +182,7 @@ button.btn {
 
 .stat-frame {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   padding: 0;
   background: transparent;
@@ -1045,6 +1045,13 @@ button.btn {
   margin: 0 1.25rem;
 }
 
+.desk-range {
+  margin: 0.5rem 1.25rem 0;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .desk-label {
   margin: 0 1.25rem 0.75rem;
   padding: 0;
@@ -1298,6 +1305,7 @@ button.btn {
 
 .hoops-audit,
 .hoops-slate,
+.hoops-blockers,
 .hoops-rules,
 .hoops-shadow {
   background: #f5f4ef;
@@ -1641,6 +1649,72 @@ button.btn {
   margin: 8px 0 0;
   font-size: 0.8rem;
   color: #57554e;
+}
+
+.hoops-blocker-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hoops-blocker {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2.2fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+
+.hoops-blocker-name {
+  color: #3d3b35;
+}
+
+.hoops-blocker-track {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: #ecebe3;
+  overflow: hidden;
+}
+
+.hoops-blocker-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #d92d20;
+}
+
+.hoops-blocker-count {
+  min-width: 3.4rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+  color: #8a877e;
+}
+
+@media (max-width: 640px) {
+  .hoops-blocker {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "name count"
+      "track track";
+    row-gap: 4px;
+  }
+
+  .hoops-blocker-name {
+    grid-area: name;
+  }
+
+  .hoops-blocker-count {
+    grid-area: count;
+  }
+
+  .hoops-blocker-track {
+    grid-area: track;
+  }
 }
 
 .hoops-empty {

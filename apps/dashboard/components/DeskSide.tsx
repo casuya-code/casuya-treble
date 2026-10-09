@@ -125,6 +125,7 @@ export function DeskSide({
         <button type="button" className="btn primary desk-generate" disabled={loading} onClick={onGenerate}>
           {showAlternatives ? t.generateTop : t.generateBest}
         </button>
+        <p className="desk-range">{t.oddsRangeNote}</p>
       </section>
 
       <div className="desk-scroll">
