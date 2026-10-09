@@ -13,25 +13,6 @@ _LEAGUES = (
     ("eredivisie", {"netherlands", "holland"}, ("eredivisie",)),
     ("primeira", {"portugal"}, ("liga portugal", "primeira liga", "primeira")),
     ("argentina", {"argentina"}, ("liga profesional", "primera division")),
-    # Extra senior top flights, seeded from Football-Data.
-    ("belgium", {"belgium"}, ("pro league",)),
-    ("turkey", {"turkey"}, ("super lig",)),
-    ("greece", {"greece"}, ("super league",)),
-    ("scotland", {"scotland"}, ("premiership",)),
-    ("japan", {"japan"}, ("j.league",)),
-    ("sweden", {"sweden"}, ("allsvenskan",)),
-    ("norway", {"norway"}, ("eliteserien",)),
-    ("denmark", {"denmark"}, ("superliga",)),
-    ("poland", {"poland"}, ("ekstraklasa",)),
-    ("romania", {"romania"}, ("liga i",)),
-    ("austria", {"austria"}, ("bundesliga",)),
-    ("switzerland", {"switzerland"}, ("super league",)),
-    ("finland", {"finland"}, ("veikkausliiga",)),
-    ("ireland", {"ireland"}, ("premier division",)),
-    ("mexico", {"mexico"}, ("liga mx",)),
-    ("usa", {"usa", "united states"}, ("mls",)),
-    ("china", {"china"}, ("chinese super league",)),
-    ("brazil", {"brazil"}, ("serie a",)),
 )
 
 # Youth, women, reserve, cup and play-off editions are never the senior league.
@@ -57,7 +38,6 @@ _NOT_SENIOR_LEAGUE = (
     "copa",
     "coupe",
     "trophy",
-    "next pro",
 )
 
 # Lower divisions we deliberately leave out (Championship is the exception above).
@@ -72,14 +52,11 @@ _LOWER_DIVISION = (
     "divisao 2",
     "liga 2",
     "liga 3",
-    "liga ii",
-    "liga iii",
     "ligue 2",
     "laliga2",
     "la liga 2",
     "1. lig",
     "1. division",
-    "first division",
     "regionalliga",
     "oberliga",
     "superettan",

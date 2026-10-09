@@ -100,49 +100,6 @@ def test_league_key_leaves_out_youth_women_cups_and_lower_tiers():
     assert league_key("Football / Argentina / Primera Division") == "argentina"
 
 
-def test_extra_senior_leagues_resolve_and_lower_tiers_stay_out():
-    assert league_key("Football / Belgium / Pro League") == "belgium"
-    assert league_key("Football / Belgium / U21 Pro League") is None
-    assert league_key("Football / Belgium / Challenger Pro League") is None
-    assert league_key("Football / Turkey / Super Lig") == "turkey"
-    assert league_key("Football / Turkey / 1. Lig") is None
-    assert league_key("Football / Greece / Super League") == "greece"
-    assert league_key("Football / Scotland / Premiership") == "scotland"
-    assert league_key("Football / Japan / J.League") == "japan"
-    assert league_key("Football / Japan / J.League 2") is None
-    assert league_key("Football / Sweden / Allsvenskan") == "sweden"
-    assert league_key("Football / Norway / Eliteserien") == "norway"
-    assert league_key("Football / Denmark / Superliga") == "denmark"
-    assert league_key("Football / Poland / Ekstraklasa") == "poland"
-    assert league_key("Football / Romania / Liga I") == "romania"
-    assert league_key("Football / Romania / Liga II") is None
-    assert league_key("Football / Austria / Bundesliga") == "austria"
-    assert league_key("Football / Switzerland / Super League") == "switzerland"
-    assert league_key("Football / Finland / Veikkausliiga") == "finland"
-    assert league_key("Football / Ireland / Premier Division") == "ireland"
-    assert league_key("Football / Ireland / First Division") is None
-    assert league_key("Football / Northern Ireland / Premiership") is None
-    assert league_key("Football / Mexico / Liga MX, Apertura") == "mexico"
-    assert league_key("Football / Mexico / U21 Liga MX") is None
-    assert league_key("Football / USA / MLS") == "usa"
-    assert league_key("Football / USA / MLS Next Pro") is None
-    assert league_key("Football / China / Chinese Super League") == "china"
-    assert league_key("Football / Brazil / Serie A") == "brazil"
-    # History labels must resolve to the same keys as the BetPawa labels.
-    assert league_key("Belgium / Pro League") == "belgium"
-    assert league_key("Turkey / Super Lig") == "turkey"
-    assert league_key("China / Chinese Super League") == "china"
-
-
-def test_every_seeded_league_file_resolves_to_a_key():
-    from shared.football_data import DIVISIONS, EXTRA_FILES
-
-    for division, league in DIVISIONS:
-        assert league_key(league) is not None, f"{division} {league}"
-    for _url, division, league, _tz in EXTRA_FILES:
-        assert league_key(league) is not None, f"{division} {league}"
-
-
 def test_form_uses_history_when_the_names_differ():
     history = []
     for day in range(1, 13):

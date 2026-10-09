@@ -21,20 +21,6 @@ logger = logging.getLogger("casuya.history")
 
 LONDON = ZoneInfo("Europe/London")
 BUENOS_AIRES = ZoneInfo("America/Argentina/Buenos_Aires")
-TOKYO = ZoneInfo("Asia/Tokyo")
-STOCKHOLM = ZoneInfo("Europe/Stockholm")
-OSLO = ZoneInfo("Europe/Oslo")
-COPENHAGEN = ZoneInfo("Europe/Copenhagen")
-WARSAW = ZoneInfo("Europe/Warsaw")
-BUCHAREST = ZoneInfo("Europe/Bucharest")
-VIENNA = ZoneInfo("Europe/Vienna")
-ZURICH = ZoneInfo("Europe/Zurich")
-HELSINKI = ZoneInfo("Europe/Helsinki")
-DUBLIN = ZoneInfo("Europe/Dublin")
-MEXICO_CITY = ZoneInfo("America/Mexico_City")
-NEW_YORK = ZoneInfo("America/New_York")
-SHANGHAI = ZoneInfo("Asia/Shanghai")
-SAO_PAULO = ZoneInfo("America/Sao_Paulo")
 SOURCE = "https://www.football-data.co.uk/mmz4281"
 ARGENTINA_LEAGUE = "Argentina / Liga Profesional"
 # Current season plus the one before, so a team still has 20 results in August.
@@ -47,30 +33,11 @@ DIVISIONS = (
     ("F1", "France / Ligue 1"),
     ("N1", "Netherlands / Eredivisie"),
     ("P1", "Portugal / Liga Portugal"),
-    ("B1", "Belgium / Pro League"),
-    ("T1", "Turkey / Super Lig"),
-    ("G1", "Greece / Super League"),
-    ("SC0", "Scotland / Premiership"),
 )
 
 # One file covers every season. The importer keeps the last two years.
-# These all-years files carry goals only; the DIVISIONS above also carry corners.
 EXTRA_FILES = (
     ("https://www.football-data.co.uk/new/ARG.csv", "ARG", ARGENTINA_LEAGUE, BUENOS_AIRES),
-    ("https://www.football-data.co.uk/new/JPN.csv", "JPN", "Japan / J.League", TOKYO),
-    ("https://www.football-data.co.uk/new/SWE.csv", "SWE", "Sweden / Allsvenskan", STOCKHOLM),
-    ("https://www.football-data.co.uk/new/NOR.csv", "NOR", "Norway / Eliteserien", OSLO),
-    ("https://www.football-data.co.uk/new/DNK.csv", "DNK", "Denmark / Superliga", COPENHAGEN),
-    ("https://www.football-data.co.uk/new/POL.csv", "POL", "Poland / Ekstraklasa", WARSAW),
-    ("https://www.football-data.co.uk/new/ROU.csv", "ROU", "Romania / Liga I", BUCHAREST),
-    ("https://www.football-data.co.uk/new/AUT.csv", "AUT", "Austria / Bundesliga", VIENNA),
-    ("https://www.football-data.co.uk/new/SWZ.csv", "SWZ", "Switzerland / Super League", ZURICH),
-    ("https://www.football-data.co.uk/new/FIN.csv", "FIN", "Finland / Veikkausliiga", HELSINKI),
-    ("https://www.football-data.co.uk/new/IRL.csv", "IRL", "Ireland / Premier Division", DUBLIN),
-    ("https://www.football-data.co.uk/new/MEX.csv", "MEX", "Mexico / Liga MX", MEXICO_CITY),
-    ("https://www.football-data.co.uk/new/USA.csv", "USA", "USA / MLS", NEW_YORK),
-    ("https://www.football-data.co.uk/new/CHN.csv", "CHN", "China / Chinese Super League", SHANGHAI),
-    ("https://www.football-data.co.uk/new/BRA.csv", "BRA", "Brazil / Serie A", SAO_PAULO),
 )
 
 _fetched_at: datetime | None = None
