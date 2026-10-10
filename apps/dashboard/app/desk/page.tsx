@@ -741,8 +741,6 @@ function DeskPage() {
 
   function generate() {
 
-    closePhoneSide();
-
     if (deletablePending > 0 && !confirmReplace) {
 
       setConfirmReplace(true);
@@ -750,6 +748,8 @@ function DeskPage() {
       return;
 
     }
+
+    closePhoneSide();
 
     setConfirmReplace(false);
 
