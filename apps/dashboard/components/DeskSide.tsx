@@ -173,7 +173,8 @@ export function DeskSide({
             <button
               key={item}
               type="button"
-              className={filter === item ? "active" : ""}
+              data-count={item}
+              className={`${filter === item ? "active" : ""} ${item === "PENDING" && stats.pending > 0 ? "hot" : ""}`}
               aria-current={filter === item ? "true" : undefined}
               onClick={() => onFilter(item)}
             >
@@ -234,24 +235,24 @@ export function DeskSide({
         <button type="button" className="desk-text" disabled={loading} onClick={onRefresh}>
           {t.refresh}
         </button>
-        <div className="desk-quiet">
+        <div className="desk-quiet desk-places">
           <Link href="/hoops" className="desk-text">
             {t.hoops}
           </Link>
+          {isAdmin ? (
+            <>
+              <Link href="/admin" className="desk-text">
+                {t.admin}
+              </Link>
+              <button type="button" className="desk-text" disabled={loading} onClick={onToggleTools}>
+                {showTools ? t.hide : t.more}
+              </button>
+            </>
+          ) : null}
         </div>
       </section>
 
-      {isAdmin ? (
-        <div className="desk-quiet">
-          <Link href="/admin" className="desk-text">
-            {t.admin}
-          </Link>
-          <button type="button" className="desk-text" disabled={loading} onClick={onToggleTools}>
-            {showTools ? t.hide : t.more}
-          </button>
-          {showTools ? tools : null}
-        </div>
-      ) : null}
+      {isAdmin && showTools ? tools : null}
       </div>
 
       <section className="desk-module desk-account" aria-labelledby="desk-step-account">

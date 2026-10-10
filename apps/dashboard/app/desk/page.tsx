@@ -1107,6 +1107,16 @@ function DeskPage() {
 
 
 
+          <div className="slips-head">
+
+            <h1 className="slips-title">{t.stepSlips}</h1>
+
+            <p className="slips-meta">{activeDate ? formatDay(activeDate, lang) : t.allDates}</p>
+
+          </div>
+
+
+
         <section id="slips" className="slip-grid" aria-label={`Slip history, last ${retentionDays} days`}>
 
           {slips.length > 0 ? (

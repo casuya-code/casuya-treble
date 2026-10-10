@@ -50,6 +50,19 @@
   --frame-border: 1px solid var(--border);
   --btn-shadow: none;
   --btn-primary-shadow: none;
+
+  /* Soft depth: kept out of --shadow so default frames stay flat. */
+  --shadow-soft: 0 1px 2px rgba(24, 24, 27, 0.04), 0 10px 28px -14px rgba(24, 24, 27, 0.16);
+  --shadow-lift: 0 2px 6px rgba(24, 24, 27, 0.06), 0 20px 48px -20px rgba(24, 24, 27, 0.28);
+
+  /* Hero accent: orange gradient + text tones for filled surfaces. */
+  --accent-grad: linear-gradient(180deg, #ff5c22 0%, #fa500f 100%);
+  --on-accent: #fff7f2;
+  --accent-text: #b33400;
+
+  /* Cards and floating panels breathe a little more than hairline frames. */
+  --radius-card: 12px;
+  --radius-panel: 16px;
   /* Device screen margins = OS safe areas only (viewport-fit: cover) */
   --device-margin-top: env(safe-area-inset-top, 0px);
   --device-margin-right: env(safe-area-inset-right, 0px);
@@ -611,7 +624,8 @@ button:disabled,
 .admin-nav a.active {
   color: var(--ink);
   border-left-color: var(--accent);
-  background: var(--surface-3);
+  background: var(--accent-soft);
+  font-weight: 700;
 }
 
 .admin-nav button:hover:not(:disabled),
