@@ -955,8 +955,9 @@ button.btn {
 }
 
 .desk-side {
-  width: 276px;
-  flex: 0 0 276px;
+  width: 288px;
+  flex: 0 0 288px;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -964,6 +965,18 @@ button.btn {
   background: var(--rail-grad), #191613;
   border-right: 1px solid var(--rail-line);
   color: var(--on-rail);
+}
+
+/* A 3px orange gradient crowns the rail, echoing the brand mark. */
+.desk-side::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-grad);
+  z-index: 1;
 }
 
 /* Brand lockup sits on the dark rail like a press-box plaque. */
