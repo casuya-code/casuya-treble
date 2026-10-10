@@ -1148,6 +1148,57 @@ button.btn {
   color: var(--accent);
 }
 
+.desk-cal {
+  margin: 1.1rem 1.25rem 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid #e5e2d8;
+}
+
+.desk-cal .desk-label {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.desk-cal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.desk-cal-table th {
+  padding: 0.25rem 0.3rem;
+  text-align: right;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.desk-cal-table th:first-child,
+.desk-cal-table td:first-child {
+  text-align: left;
+}
+
+.desk-cal-table td {
+  padding: 0.3rem;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.desk-cal-table tr.off td {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.desk-cal-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
 .desk-quiet {
   display: flex;
   flex-direction: column;

@@ -20,6 +20,15 @@ type Counts = {
   placed: number;
 };
 
+/** One settled corner line: settled/won counts plus the model's average claim. */
+export type CornerStat = {
+  line: number;
+  settled: number;
+  won: number;
+  avgP: number;
+  avgOdds: number;
+};
+
 type Props = {
   isAdmin: boolean;
   loading: boolean;
@@ -36,6 +45,8 @@ type Props = {
   confirmReplace: boolean;
   /** Pending, unplaced slips this run would delete. */
   deletablePending: number;
+  /** Settled corner legs by line for the calibration table. */
+  cornerStats: CornerStat[];
   onFilter: (filter: Filter) => void;
   onDate: (day: string | null) => void;
   onGenerate: () => void;
@@ -62,6 +73,7 @@ export function DeskSide({
   showTools,
   confirmReplace,
   deletablePending,
+  cornerStats,
   onFilter,
   onDate,
   onGenerate,
@@ -182,6 +194,42 @@ export function DeskSide({
               </button>
             ))}
           </nav>
+        ) : null}
+        {cornerStats.length > 0 ? (
+          <div className="desk-cal" aria-labelledby="desk-cal-label">
+            <p className="desk-label" id="desk-cal-label">
+              {t.cornerCalibration}
+            </p>
+            <table className="desk-cal-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t.cornerCalLine}</th>
+                  <th scope="col">{t.cornerCalWon}</th>
+                  <th scope="col">{t.cornerCalSettled}</th>
+                  <th scope="col">{t.cornerCalHit}</th>
+                  <th scope="col">{t.cornerCalModel}</th>
+                  <th scope="col">{t.cornerCalOdds}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cornerStats.map((row) => {
+                  const hit = row.settled ? (row.won / row.settled) * 100 : null;
+                  const badCalibration = hit != null && row.avgP > 0 && hit < row.avgP * 100 - 15;
+                  return (
+                    <tr key={row.line} className={badCalibration ? "off" : undefined}>
+                      <td>O{row.line}+</td>
+                      <td>{row.won}</td>
+                      <td>{row.settled}</td>
+                      <td>{hit == null ? "—" : `${Math.round(hit)}%`}</td>
+                      <td>{row.avgP > 0 ? `${Math.round(row.avgP * 100)}%` : "—"}</td>
+                      <td>{row.avgOdds > 0 ? row.avgOdds.toFixed(2) : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="desk-cal-note">{t.cornerCalNote}</p>
+          </div>
         ) : null}
         <button type="button" className="desk-text" disabled={loading} onClick={onRefresh}>
           {t.refresh}

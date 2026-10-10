@@ -83,7 +83,16 @@ def estimate_first_half_corners(
 
     lambda_home = (home_attack / league_home) * (away_defence / league_away) * league_home
     lambda_away = (away_attack / league_away) * (home_defence / league_home) * league_away
-    total = min(max(lambda_home + lambda_away, 1.0), 16.0)
+
+    league_total = league_home + league_away
+    raw_total = lambda_home + lambda_away
+    if league_total <= 0:
+        return None
+    # Six to twelve games a side is a thin sample: pull extreme strength ratios
+    # back toward the league mean so a lucky corner run cannot inflate a high
+    # 1H line into a fake edge. A 1.41x corner rate becomes sqrt(1.41) = 1.19x.
+    multiplier = (raw_total / league_total) ** 0.5 if raw_total > 0 else 1.0
+    total = min(max(league_total * multiplier, 1.0), 14.0)
     return round(total * FIRST_HALF_SHARE, 3)
 
 

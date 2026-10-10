@@ -12,7 +12,7 @@ import { MenuButton, useLandingLang } from "@/components/LandingLang";
 
 import { StatusKind } from "@/components/StatusBadge";
 
-import { SlipCard } from "@/components/SlipCard";
+import { cornerLine, legKind, SlipCard } from "@/components/SlipCard";
 
 import Link from "next/link";
 
@@ -673,6 +673,64 @@ function DeskPage() {
 
 
 
+  /** Settled first-half corner legs by line, so the model's hit rate can be checked. */
+
+  const cornerStats = useMemo(() => {
+
+    const byLine = new Map<number, { settled: number; won: number; pSum: number; oddsSum: number }>();
+
+    for (const slip of slips) {
+
+      for (const leg of slip.legs) {
+
+        if (!leg.market.toLowerCase().includes("corner")) continue;
+
+        const kind = legKind(leg);
+
+        if (kind !== "WON" && kind !== "LOST") continue;
+
+        const line = cornerLine(leg.market);
+
+        if (line == null) continue;
+
+        const row = byLine.get(line) ?? { settled: 0, won: 0, pSum: 0, oddsSum: 0 };
+
+        row.settled += 1;
+
+        if (kind === "WON") row.won += 1;
+
+        row.pSum += leg.model_probability ?? 0;
+
+        row.oddsSum += leg.leg_odds ?? 0;
+
+        byLine.set(line, row);
+
+      }
+
+    }
+
+    return [...byLine.entries()]
+
+      .sort(([a], [b]) => a - b)
+
+      .map(([line, row]) => ({
+
+        line,
+
+        settled: row.settled,
+
+        won: row.won,
+
+        avgP: row.settled ? row.pSum / row.settled : 0,
+
+        avgOdds: row.settled ? row.oddsSum / row.settled : 0,
+
+      }));
+
+  }, [slips]);
+
+
+
   async function runAction(action: () => Promise<void>) {
 
     setLoading(true);
@@ -838,6 +896,8 @@ function DeskPage() {
           confirmReplace={confirmReplace}
 
           deletablePending={deletablePending}
+
+          cornerStats={cornerStats}
 
           onFilter={(next) => {
 

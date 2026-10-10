@@ -7,12 +7,12 @@ import { Slip, SlipLeg } from "@/lib/api";
 import { edgeLabel, kickoffLocal, pct, slipCreatedLocal, slipDates } from "@/lib/format";
 import { formatDay } from "@/lib/landingCopy";
 
-function cornerLine(market: string): number | null {
+export function cornerLine(market: string): number | null {
   const match = market.match(/(\d+(?:\.\d+)?)/);
   return match ? Number(match[1]) : null;
 }
 
-function legKind(leg: SlipLeg): StatusKind {
+export function legKind(leg: SlipLeg): StatusKind {
   if (leg.market.toLowerCase().includes("corner")) {
     const line = cornerLine(leg.market);
     if (leg.fh_corners == null || line == null) return "PENDING";
