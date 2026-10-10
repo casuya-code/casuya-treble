@@ -1,5 +1,10 @@
 .venv
 __pycache__
-.pytest_cache
 *.pyc
+.pytest_cache
 .env
+.env.*
+!.env.example
+tests
+postgres_data
+.railway

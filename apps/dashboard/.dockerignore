@@ -1,5 +1,7 @@
 node_modules
 .next
 .env
-.env.local
-*.log
+.env.*
+!.env.example
+.railway
+.dockerignore
