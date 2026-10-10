@@ -164,7 +164,7 @@ function HoopsBody() {
     }
   }, [history, t.requestFailed]);
 
-  const gameCards: BbGame[] = slate?.games ?? [];
+  const gameCards: BbGame[] = useMemo(() => slate?.games ?? [], [slate]);
   const failedCount = gameCards.filter((g) => g.gate_run && !g.gate_run.passed).length;
 
   /** Which of the 10 gates actually stopped the slate — the binding constraint. */
