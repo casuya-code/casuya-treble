@@ -40,6 +40,22 @@ export interface Slip {
 
 export type WeatherNote = { match: string; reason: "rain" | "snow" | "wind" | string };
 
+/**
+ * True when two slip lists are byte-identical.
+ *
+ * The desk polls every 20s and was calling setSlips with a brand-new array each
+ * time, which invalidated every memo and re-rendered the whole grid even when
+ * the server had nothing new to say. Every field on Slip and SlipLeg is a
+ * string, number, boolean, or null, so the serialized form is stable and an
+ * equality check here is exact rather than approximate.
+ */
+export function slipsUnchanged(a: Slip[] | null, b: Slip[]): boolean {
+  if (!a) return false;
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 export type GenerateResult = {
   slips: Slip[];
   reason:

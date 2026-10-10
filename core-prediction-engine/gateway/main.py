@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
@@ -56,6 +57,10 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Added after CORS so it wraps it: every JSON payload leaves the API compressed.
+# The fixture and slip listings are megabytes of repetitive text and shrink ~10x.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.include_router(auth.router)
 app.include_router(auth.admin_router)

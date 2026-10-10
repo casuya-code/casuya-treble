@@ -5,6 +5,7 @@ The correction rescales those low scorelines before the Over 1.5 chance is read 
 """
 
 import math
+from functools import lru_cache
 
 # Dixon & Coles dependence. Negative rho puts extra chance on 0-0 and 1-1.
 DIXON_COLES_RHO = -0.13
@@ -52,8 +53,13 @@ def total_goals_lambda(lambda_home: float, lambda_away: float) -> float:
     return max(lambda_home + lambda_away, 0.05)
 
 
+@lru_cache(maxsize=None)
 def prob_over_15(lambda_home: float, lambda_away: float) -> float:
-    """Chance of two or more goals after the low-score correction."""
+    """Chance of two or more goals after the low-score correction.
+
+    Memoized: the same fixture lambdas are re-scored for every leg, pool, and
+    slip row, and the 81-cell grid is pure math with no external input.
+    """
     grid = scoreline_probabilities(lambda_home, lambda_away)
     under = grid[(0, 0)] + grid[(1, 0)] + grid[(0, 1)]
     return float(max(0.0, min(1.0, 1.0 - under)))

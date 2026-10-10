@@ -78,13 +78,25 @@ export function PublicHistoryPanel() {
       }
     }
 
+    // Skip while the tab is hidden: a hidden tab was still paying for a timer
+    // wake plus a full fetch every 20s, on the marketing page, forever. Coming
+    // back into view still refreshes immediately, which is why the two
+    // directions are handled separately rather than through one guarded poller.
+    function pollIfVisible() {
+      if (document.visibilityState === "hidden") return;
+      void load();
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") void load();
+    }
+
     void load();
-    const timer = window.setInterval(() => void load(), 20000);
-    document.addEventListener("visibilitychange", load);
+    const timer = window.setInterval(pollIfVisible, 20000);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", load);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 

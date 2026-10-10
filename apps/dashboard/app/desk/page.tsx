@@ -16,7 +16,7 @@ import { cornerLine, legKind, SlipCard } from "@/components/SlipCard";
 
 import Link from "next/link";
 
-import { api, GenerateResult, Slip, WeatherNote } from "@/lib/api";
+import { api, GenerateResult, slipsUnchanged, Slip, WeatherNote } from "@/lib/api";
 
 import { clearToken, markSignedOut } from "@/lib/auth";
 
@@ -274,157 +274,104 @@ function DeskPage() {
 
 
   const refresh = useCallback(async () => {
+    // Wave 1: the two calls that gate everything else. They are independent of
+    // each other, so they run together rather than one after the other.
+    const [healthError, meResult] = await Promise.allSettled([api.health(), api.me()]);
 
-    try {
-
-      await api.health();
-
-    } catch {
-
+    if (healthError.status === "rejected") {
       setError(t.serverOffline);
-
       return false;
-
     }
 
-
-
-    let admin = false;
-
-    try {
-
-      const me = await api.me();
-
-      admin = Boolean(me.is_admin);
-
-      setIsAdmin(admin);
-
-    } catch (e) {
-
+    if (meResult.status === "rejected") {
+      const e = meResult.reason;
       if (e instanceof Error && e.message === "Session expired") return false;
-
       setError(e instanceof Error ? e.message : t.loadAccount);
-
       return false;
-
     }
 
+    const admin = Boolean(meResult.value.is_admin);
+    setIsAdmin(admin);
 
+    // Wave 2: three independent status reads, all parallel.
+    const [provider, bp, retention] = await Promise.allSettled([
+      api.oddsProviderStatus(),
+      api.betpawaStatus(),
+      api.retentionDays(),
+    ]);
 
-    try {
+    setOddsApiReady(provider.status === "fulfilled" ? provider.value.configured : false);
+    setBetpawaReady(bp.status === "fulfilled" ? bp.value.configured : false);
 
-      const provider = await api.oddsProviderStatus();
-
-      setOddsApiReady(provider.configured);
-
-    } catch {
-
-      setOddsApiReady(false);
-
-    }
-
-
-
-    try {
-
-      const bp = await api.betpawaStatus();
-
-      setBetpawaReady(bp.configured);
-
-    } catch {
-
-      setBetpawaReady(false);
-
-    }
-
-
-
-    try {
-
-      const retention = await api.retentionDays();
-
-      setRetentionDays(retention.retention_days);
-
-      setSlips(await api.listSlips({ days: retention.retention_days }));
-
-      setError(null);
-
-      return { admin };
-
-    } catch (e) {
-
+    if (retention.status === "rejected") {
+      const e = retention.reason;
       setError(e instanceof Error ? e.message : t.loadSlips);
-
       return false;
-
     }
 
+    setRetentionDays(retention.value.retention_days);
+
+    // Wave 3: the only call that depends on a previous result.
+    try {
+      setSlips(await api.listSlips({ days: retention.value.retention_days }));
+      setError(null);
+      return { admin };
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.loadSlips);
+      return false;
+    }
   }, [t.loadAccount, t.loadSlips, t.serverOffline]);
 
 
 
   useEffect(() => {
-
     let cancelled = false;
-
     let admin = false;
 
     void (async () => {
-
       setLoading(true);
 
       try {
-
         const session = await refresh();
-
         if (cancelled || !session) return;
-
         admin = session.admin;
-
-        const imported = await importBetPawaOnce();
-
-        if (cancelled) return;
-
-        const cleared =
-
-          imported.practice_removed > 0 ? ` ${fill(t.practiceRemoved, { n: imported.practice_removed })}` : "";
-
-        const historyCount = (imported.history_imported ?? 0) + (imported.history_updated ?? 0);
-
-        const history = historyCount > 0 ? ` ${fill(t.historyAdded, { n: historyCount })}` : "";
-
-        const again = session.admin ? ` ${t.importAgain}` : "";
-
-        setInfo(`${fill(t.betpawaUpdated, { n: imported.events_fetched })}${cleared}${history}${again}`);
-
-        const retention = await api.retentionDays();
-
-        if (cancelled) return;
-
-        setSlips(await api.listSlips({ days: retention.retention_days }));
-
       } catch (e) {
-
         if (!cancelled) {
-
           setError(e instanceof Error ? e.message : admin ? t.refreshFailed : t.refreshFailedOpen);
-
         }
-
+        return;
       } finally {
-
         if (!cancelled) setLoading(false);
-
       }
 
+      // The BetPawa pull can take minutes (external scrape + history seed), so
+      // it no longer gates the desk. The slips from `refresh` are already on
+      // screen; this refreshes them once the import lands and posts the notice.
+      void importBetPawaOnce()
+        .then(async (imported) => {
+          if (cancelled) return;
+
+          const cleared =
+            imported.practice_removed > 0 ? ` ${fill(t.practiceRemoved, { n: imported.practice_removed })}` : "";
+          const historyCount = (imported.history_imported ?? 0) + (imported.history_updated ?? 0);
+          const history = historyCount > 0 ? ` ${fill(t.historyAdded, { n: historyCount })}` : "";
+          const again = admin ? ` ${t.importAgain}` : "";
+
+          setInfo(`${fill(t.betpawaUpdated, { n: imported.events_fetched })}${cleared}${history}${again}`);
+
+          const retention = await api.retentionDays();
+          if (cancelled) return;
+          setSlips(await api.listSlips({ days: retention.retention_days }));
+        })
+        .catch(() => {
+          // Already surfaced through the desk's own status line; the slips from
+          // the initial load are still valid, so a failed import is not fatal.
+        });
     })();
 
     return () => {
-
       cancelled = true;
-
     };
-
   }, [refresh, t]);
 
 
@@ -441,7 +388,13 @@ function DeskPage() {
 
         .then((next) => {
 
-          setSlips(next);
+          // A fresh array from every poll invalidated every slip memo and
+
+          // re-rendered the whole grid even when the data was identical.
+
+          // Keeping the old reference when nothing moved avoids that entirely.
+
+          setSlips((prev) => (slipsUnchanged(prev, next) ? prev : next));
 
           setError(null);
 

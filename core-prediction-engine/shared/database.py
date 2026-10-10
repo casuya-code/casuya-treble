@@ -31,6 +31,18 @@ async def init_db() -> None:
             )
         )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_slips_user_id ON slips (user_id)"))
+        # Hot-path indexes. Postgres does not index foreign keys on its own, so
+        # every selectinload(Slip.legs) and score_sync join was a sequential scan.
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_slip_legs_slip_id ON slip_legs (slip_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_slip_legs_fixture_id ON slip_legs (fixture_id)"))
+        # Every fixture list and the treble generator sort by kickoff_at.
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_fixtures_kickoff_at ON fixtures (kickoff_at)"))
+        # Score sync and retention windows filter on status before they sort.
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_fixtures_status ON fixtures (status)"))
+        # The desk paginates a user's slips newest-first.
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_slips_user_timestamp ON slips (user_id, timestamp)")
+        )
         await conn.execute(
             text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE")
         )

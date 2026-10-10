@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, time, timezone
+from time import monotonic
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -85,6 +86,14 @@ class BetPawaImportResult(BaseModel):
     practice_removed: int
     history_imported: int = 0
     history_updated: int = 0
+    cached: bool = False
+
+
+# The desk fires this on every page load, and one pass can take minutes: up to 8
+# sequential BetPawa pages, an event fan-out, and a 17-file history seed. Hold
+# the last result and replay it for IMPORT_TTL_SECONDS so a refresh or a second
+# tab does not re-scrape. `refresh=true` still forces a real pass.
+IMPORT_TTL_SECONDS = 300.0
 
 
 class HistoricalImportResult(BaseModel):
@@ -102,12 +111,70 @@ async def betpawa_source_status() -> BetPawaSourceStatus:
     )
 
 
+class CachedImport:
+    """Replay a recent import instead of scraping again.
+
+    Held on the router module because the gate is per-process: two tabs hitting
+    the same worker within the TTL share one result.
+    """
+
+    def __init__(self, ttl: float) -> None:
+        self.ttl = ttl
+        self._stamp: float | None = None
+        self._result: BetPawaImportResult | None = None
+        self._lock = asyncio.Lock()
+
+    def clear(self) -> None:
+        self._stamp = None
+        self._result = None
+
+    async def run(self, fresh: bool, produce) -> BetPawaImportResult:
+        now = monotonic()
+        if (
+            not fresh
+            and self._result is not None
+            and self._stamp is not None
+            and now - self._stamp < self.ttl
+        ):
+            return self._result.model_copy(update={"cached": True})
+
+        async with self._lock:
+            now = monotonic()
+            if (
+                not fresh
+                and self._result is not None
+                and self._stamp is not None
+                and now - self._stamp < self.ttl
+            ):
+                return self._result.model_copy(update={"cached": True})
+            result = await produce()
+            self._stamp = monotonic()
+            self._result = result
+            return result
+
+
+IMPORT_GATE = CachedImport(IMPORT_TTL_SECONDS)
+
+
 @router.post("/import/betpawa", response_model=BetPawaImportResult)
 async def import_from_betpawa(
     db: AsyncSession = Depends(get_db),
     take: int | None = Query(default=None, ge=10, le=100),
     popular_only: bool = Query(False, description="Limit to BetPawa popular football list"),
+    refresh: bool = Query(False, description="Force a new scrape even if one just ran"),
     _user: User = Depends(get_current_user),
+) -> BetPawaImportResult:
+    async def produce() -> BetPawaImportResult:
+        return await _scrape_and_store(db, take=take, popular_only=popular_only)
+
+    return await IMPORT_GATE.run(refresh, produce)
+
+
+async def _scrape_and_store(
+    db: AsyncSession,
+    *,
+    take: int | None,
+    popular_only: bool,
 ) -> BetPawaImportResult:
     try:
         rows = await fetch_football_over_15(take=take, popular_only=popular_only)
@@ -118,9 +185,16 @@ async def import_from_betpawa(
 
     imported = 0
     updated = 0
+    # One lookup for the whole batch. The per-row SELECT this replaced was up to
+    # ~480 round-trips and ran on every page load.
+    incoming_ids = [row.external_id for row in rows]
+    existing: dict[str, Fixture] = {}
+    if incoming_ids:
+        found = await db.execute(select(Fixture).where(Fixture.external_id.in_(incoming_ids)))
+        existing = {fx.external_id: fx for fx in found.scalars() if fx.external_id}
+
     for row in rows:
-        result = await db.execute(select(Fixture).where(Fixture.external_id == row.external_id))
-        fixture = result.scalar_one_or_none()
+        fixture = existing.get(row.external_id)
         if fixture:
             fixture.home_team = row.home_team
             fixture.away_team = row.away_team
@@ -267,6 +341,22 @@ async def seed_demo_fixtures(
 
 
 @router.get("/fixtures", response_model=list[FixtureOut])
-async def list_fixtures(db: AsyncSession = Depends(get_db)) -> list[Fixture]:
-    result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
+async def list_fixtures(
+    db: AsyncSession = Depends(get_db),
+    upcoming_only: bool = Query(
+        True,
+        description="Only matches that have not kicked off yet. Pass upcoming_only=false for the full history.",
+    ),
+) -> list[Fixture]:
+    """Fixtures for the desk.
+
+    Defaults to matches still to be played. This table also holds every match
+    the historical seed has ever loaded, which is thousands of finished rows the
+    desk never renders; returning all of it cost ~1.9 MB per call. `upcoming_only
+    =false` restores the unfiltered list.
+    """
+    query = select(Fixture).order_by(Fixture.kickoff_at)
+    if upcoming_only:
+        query = query.where(Fixture.kickoff_at > datetime.now(timezone.utc))
+    result = await db.execute(query)
     return list(result.scalars().all())

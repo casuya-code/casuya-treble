@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 # (key, regions, phrases that must start the competition name)
 _LEAGUES = (
     ("epl", {"england", "uk", "great britain"}, ("premier league",)),
@@ -63,6 +65,7 @@ _LOWER_DIVISION = (
 )
 
 
+@lru_cache(maxsize=None)
 def league_key(label: str | None) -> str | None:
     """Stable league id, or None when the label is not one of the seeded senior leagues."""
     if not label or "/" not in label:

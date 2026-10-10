@@ -6,23 +6,30 @@ export function pct(value: number, digits = 1): string {
 
 const NAIROBI = "Africa/Nairobi";
 
+// Constructed once at module load. These were built per call and reached once
+// per leg per slip, so a 90-day desk was making thousands of formatter objects
+// on every 20s poll tick.
+const CLOCK_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: NAIROBI,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const DAY_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: NAIROBI,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function kickoffLocal(iso: string, lang: Lang = "en"): string {
-  const clock = new Intl.DateTimeFormat("en-GB", {
-    timeZone: NAIROBI,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(iso));
+  const clock = CLOCK_FORMAT.format(new Date(iso));
   return `${formatDay(nairobiDay(iso), lang)}, ${clock}`;
 }
 
 export function nairobiDay(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Nairobi",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
+  return DAY_FORMAT.format(new Date(iso));
 }
 
 export function slipDates(kickoffs: string[]): string[] {

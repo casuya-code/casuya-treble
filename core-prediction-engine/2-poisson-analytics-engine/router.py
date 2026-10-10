@@ -1,6 +1,7 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +37,21 @@ async def get_over_15_probability(fixture_id: UUID, db: AsyncSession = Depends(g
 
 
 @router.get("/fixtures/over-15/batch", response_model=list[ProbabilityOut])
-async def batch_over_15(db: AsyncSession = Depends(get_db)) -> list[ProbabilityOut]:
-    result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
+async def batch_over_15(
+    db: AsyncSession = Depends(get_db),
+    upcoming_only: bool = Query(
+        True,
+        description="Only matches that have not kicked off yet. Pass upcoming_only=false for the full history.",
+    ),
+) -> list[ProbabilityOut]:
+    """Over 1.5 model for every fixture, priced one Dixon-Coles grid per row.
+
+    Defaults to matches still to be played: the full table is thousands of
+    finished rows that the desk never shows, and each one costs an 81-cell
+    scoreline grid to price. `upcoming_only=false` restores the full list.
+    """
+    query = select(Fixture).order_by(Fixture.kickoff_at)
+    if upcoming_only:
+        query = query.where(Fixture.kickoff_at > datetime.now(timezone.utc))
+    result = await db.execute(query)
     return [_probability_row(f) for f in result.scalars().all()]

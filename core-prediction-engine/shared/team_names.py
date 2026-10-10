@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unicodedata
+from functools import lru_cache
 
 _STOP = {
     "fc",
@@ -135,6 +136,7 @@ def _drop_club_words(text: str) -> str:
     return " ".join(tokens)
 
 
+@lru_cache(maxsize=None)
 def team_key(name: str) -> str:
     """One key for a club, whether the feed uses a short or a full name."""
     text = _normalize(name)
