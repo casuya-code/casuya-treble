@@ -253,10 +253,11 @@
 }
 
 .landing .slip {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 24px;
+  background: linear-gradient(180deg, #fffdf6 0%, #fbf7ec 100%);
+  border: 1px solid #e9e3d2;
+  border-radius: 14px;
+  padding: 26px;
+  box-shadow: 0 26px 48px -28px rgba(24, 24, 27, 0.28);
 }
 
 .landing .slip-tag {
@@ -754,4 +755,45 @@ body.app-body:has(.landing) {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ---- Creative pass — the hero has a warm stadium-light halo ---- */
+.landing-hero {
+  background: radial-gradient(520px 340px at 78% 28%, rgba(250, 80, 15, 0.07), transparent 70%);
+}
+
+/* The hero CTA becomes a glowing orange pill; the header/sticky CTAs stay ink. */
+.landing-hero .ct-btn {
+  background: var(--accent-grad);
+  color: #fff8f3;
+  border-radius: 999px;
+  box-shadow: var(--accent-glow);
+  font-weight: 600;
+}
+
+.landing-hero .ct-btn:hover {
+  background: var(--accent-grad);
+  color: #ffffff;
+  box-shadow: 0 20px 44px -14px rgba(250, 80, 15, 0.95);
+  transform: translateY(-1px);
+}
+
+/* The ticket tilts on the desk like a real staked coupon. */
+@media (min-width: 800px) {
+  .landing-hero .slip {
+    transform: rotate(-1.25deg);
+    transition: transform 0.25s ease;
+  }
+
+  .landing-hero .slip:hover {
+    transform: rotate(0deg) translateY(-3px);
+  }
+}
+
+/* The promised payout reads in branded gradient ink above the ticket. */
+.landing .total {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

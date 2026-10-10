@@ -432,7 +432,8 @@ button.btn {
 }
 
 .prob-bar {
-  background: #e4e3de;
+  background: #e8e6dd;
+  box-shadow: inset 0 1px 2px rgba(24, 24, 27, 0.05);
 }
 
 .leg-row {
@@ -949,35 +950,65 @@ button.btn {
   display: flex;
   align-items: stretch;
   min-height: 100dvh;
+  /* Warm stadium-light glow bleeds in from the top right of the canvas. */
+  background: radial-gradient(920px 420px at 88% -6%, rgba(250, 80, 15, 0.06), transparent 62%), var(--bg);
 }
 
 .desk-side {
-  width: 272px;
-  flex: 0 0 272px;
+  width: 276px;
+  flex: 0 0 276px;
   display: flex;
   flex-direction: column;
   gap: 0;
   padding: 1.25rem 0 1.25rem;
-  background: #f5f4ef;
-  border-right: 1px solid var(--border);
+  background: var(--rail-grad), #191613;
+  border-right: 1px solid var(--rail-line);
+  color: var(--on-rail);
 }
 
+/* Brand lockup sits on the dark rail like a press-box plaque. */
 .desk-side .brand {
   min-height: 44px;
   margin: 0 1.25rem 16px;
   padding: 0;
   text-decoration: none;
+  color: var(--on-rail);
+}
+
+.desk-side .brand-mark {
+  background: var(--accent-grad);
+  box-shadow: 0 6px 16px -8px rgba(250, 80, 15, 0.55);
+}
+
+.desk-side .brand-text {
+  color: var(--on-rail);
+}
+
+.desk-side .brand-long {
+  color: #ffb27d;
+  font-weight: 600;
 }
 
 .desk-side .lang-switch {
   width: auto;
   margin: 0 1.25rem;
+  border-color: var(--rail-line);
 }
 
 .desk-side .lang-switch button {
   flex: 1;
   min-height: 40px;
   padding: 0 8px;
+  color: var(--on-rail-muted);
+}
+
+.desk-side .lang-switch button:hover {
+  color: var(--on-rail);
+}
+
+.desk-side .lang-switch button[aria-pressed="true"] {
+  color: #ffb27d;
+  background: var(--rail-2);
 }
 
 .desk-module {
@@ -996,30 +1027,34 @@ button.btn {
 .desk-side .desk-choice button {
   min-height: 2.6rem;
   padding: 0.4rem 0.8rem;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: transparent;
+  border: 1px solid var(--rail-line);
+  border-radius: 10px;
+  background: rgba(246, 240, 230, 0.03);
   box-shadow: none;
-  color: var(--text-secondary);
+  color: var(--on-rail-muted);
   font-size: 0.95rem;
   font-weight: 600;
   text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .desk-side .desk-choice button:hover:not(:disabled) {
-  color: var(--text);
-  background: #ebe9e0;
+  color: var(--on-rail);
+  background: rgba(246, 240, 230, 0.07);
+  border-color: rgba(246, 240, 230, 0.18);
 }
 
 .desk-side .desk-choice button.active {
   color: var(--accent-text);
-  background: var(--accent-soft);
-  border-color: #ffd9c7;
+  background: #fffdf6;
+  border-color: transparent;
   font-weight: 700;
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.45);
 }
 
 .desk-side .desk-choice button:disabled {
   cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .desk-scroll {
@@ -1032,6 +1067,21 @@ button.btn {
   margin: 16px 0 0;
   padding: 0;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(246, 240, 230, 0.18) transparent;
+}
+
+.desk-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.desk-scroll::-webkit-scrollbar-thumb {
+  background: rgba(246, 240, 230, 0.16);
+  border-radius: 999px;
+}
+
+.desk-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .desk-account {
@@ -1040,38 +1090,57 @@ button.btn {
   flex: 0 0 auto;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--rail-line);
 }
 
+/* The Generate button is the hero of the desk: glowing orange, warm sheen on hover. */
 .desk-generate.btn.primary {
   margin: 0.4rem 1.25rem 0;
   min-height: 3.1rem;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--accent-grad);
-  border-color: var(--accent);
+  border-color: transparent;
   color: var(--on-accent);
-  box-shadow: 0 10px 22px -12px rgba(250, 80, 15, 0.65);
-  font-weight: 600;
+  box-shadow: var(--accent-glow);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.18s ease, transform 0.12s ease;
+}
+
+.desk-generate.btn.primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.22) 50%, transparent 68%);
+  transform: translateX(-130%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
 }
 
 .desk-side .desk-generate.btn.primary:hover:not(:disabled) {
   background: var(--accent-grad);
-  border-color: var(--accent-hover);
+  border-color: transparent;
   color: #ffffff;
-  box-shadow: var(--shadow-lift);
+  box-shadow: 0 20px 44px -14px rgba(250, 80, 15, 0.95);
   transform: translateY(-1px);
+}
+
+.desk-side .desk-generate.btn.primary:hover:not(:disabled)::after {
+  transform: translateX(130%);
 }
 
 .desk-side .desk-generate.btn.primary:active:not(:disabled) {
   transform: translateY(0) scale(0.99);
-  box-shadow: 0 10px 22px -12px rgba(250, 80, 15, 0.65);
+  box-shadow: var(--accent-glow);
 }
 
 .desk-range {
   margin: 0.5rem 1.25rem 0;
   font-size: 0.74rem;
   line-height: 1.35;
-  color: var(--muted);
+  color: var(--on-rail-faint);
 }
 
 .desk-confirm {
@@ -1079,9 +1148,10 @@ button.btn {
   gap: 0.5rem;
   margin: 0 1.25rem;
   padding: 0.85rem 0.9rem;
-  border: 1px solid var(--danger);
-  border-radius: 8px;
-  background: var(--danger-soft);
+  border: 1px solid rgba(255, 122, 61, 0.45);
+  border-radius: 12px;
+  background: rgba(250, 80, 15, 0.1);
+  box-shadow: 0 12px 28px -20px rgba(0, 0, 0, 0.7);
 }
 
 .desk-confirm-title {
@@ -1089,14 +1159,14 @@ button.btn {
   font-family: var(--font-display);
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--danger);
+  color: #ffc89f;
 }
 
 .desk-confirm-body {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.4;
-  color: var(--text);
+  color: var(--on-rail-muted);
 }
 
 .desk-confirm-actions {
@@ -1110,6 +1180,31 @@ button.btn {
   min-height: 40px;
 }
 
+/* On the dark rail the confirm action can't lean on the ink button. */
+.desk-confirm-actions .btn.primary {
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+.desk-confirm-actions .btn.primary:hover:not(:disabled) {
+  background: var(--accent-grad);
+  color: #ffffff;
+  box-shadow: 0 12px 24px -12px rgba(250, 80, 15, 0.8);
+  transform: translateY(-1px);
+}
+
+.desk-confirm-actions .desk-text {
+  color: var(--on-rail-muted);
+  text-decoration: none;
+}
+
+.desk-confirm-actions .desk-text:hover {
+  color: var(--on-rail);
+  background: transparent;
+}
+
 .desk-label {
   margin: 0 1.25rem 0.75rem;
   padding: 0;
@@ -1119,7 +1214,7 @@ button.btn {
   letter-spacing: 0.08em;
   line-height: 1.2;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--on-rail-muted);
 }
 
 .desk-label-in {
@@ -1144,10 +1239,11 @@ button.btn {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--text-secondary);
+  color: var(--on-rail-muted);
   font-size: 0.95rem;
   font-weight: 600;
   text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .desk-side .desk-nav button b {
@@ -1158,53 +1254,55 @@ button.btn {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: center;
-  color: var(--muted);
-  background: #e8e6dd;
+  color: var(--on-rail-muted);
+  background: rgba(246, 240, 230, 0.09);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.desk-side .desk-nav button[data-count="PENDING"] b {
-  color: #933800;
-  background: #ffe3d1;
+.desk-side .desk-nav button[data-count="PENDING"] b,
+.desk-side .desk-nav button[data-count="PLACED"] b {
+  color: #ffd9bd;
+  background: rgba(250, 80, 15, 0.22);
 }
 
 .desk-side .desk-nav button[data-count="WON"] b {
-  color: #055737;
-  background: var(--success-soft);
+  color: #8cebc0;
+  background: rgba(49, 142, 104, 0.28);
 }
 
 .desk-side .desk-nav button[data-count="LOST"] b {
-  color: var(--danger);
-  background: var(--danger-soft);
+  color: #ffb4a0;
+  background: rgba(229, 19, 0, 0.22);
 }
 
 .desk-side .desk-nav button.hot b {
-  color: #fff;
-  background: var(--accent);
-  box-shadow: 0 6px 14px -8px rgba(250, 80, 15, 0.8);
+  color: #fff7f0;
+  background: var(--accent-grad);
+  box-shadow: 0 0 0 1px rgba(250, 80, 15, 0.4), 0 8px 18px -8px rgba(250, 80, 15, 0.9);
 }
 
 .desk-side .desk-nav button:hover:not(:disabled) {
-  color: var(--text);
-  background: #ebe9e0;
+  color: var(--on-rail);
+  background: rgba(246, 240, 230, 0.05);
 }
 
 .desk-side .desk-nav button.active {
-  color: var(--ink);
-  background: var(--accent-soft);
+  color: var(--on-rail);
+  background: linear-gradient(90deg, rgba(250, 80, 15, 0.16), rgba(250, 80, 15, 0.03));
   border-left-color: var(--accent);
   font-weight: 700;
 }
 
 .desk-side .desk-nav button.active b {
   color: var(--accent-text);
-  background: #ffffff;
-  box-shadow: 0 0 0 1px #ffd9c7;
+  background: #fffdf6;
+  box-shadow: 0 0 0 1px rgba(250, 80, 15, 0.25);
 }
 
 .desk-cal {
   margin: 1.1rem 1.25rem 0;
   padding-top: 0.85rem;
-  border-top: 1px solid #e5e2d8;
+  border-top: 1px solid var(--rail-line);
 }
 
 .desk-cal .desk-label {
@@ -1226,7 +1324,7 @@ button.btn {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--on-rail-faint);
 }
 
 .desk-cal-table th:first-child,
@@ -1237,11 +1335,11 @@ button.btn {
 .desk-cal-table td {
   padding: 0.3rem;
   text-align: right;
-  color: var(--text-secondary);
+  color: var(--on-rail-muted);
 }
 
 .desk-cal-table tr.off td {
-  color: var(--danger);
+  color: #ffb4a0;
   font-weight: 700;
 }
 
@@ -1249,7 +1347,7 @@ button.btn {
   margin: 0.55rem 0 0;
   font-size: 0.72rem;
   line-height: 1.4;
-  color: var(--muted);
+  color: var(--on-rail-faint);
 }
 
 .desk-quiet {
@@ -1271,18 +1369,19 @@ button.btn {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: var(--text-secondary);
+  color: var(--on-rail-muted);
   font-size: 0.95rem;
   font-weight: 600;
   text-align: left;
   text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .desk-side .desk-text:not(:disabled):hover,
 .desk-side a.desk-text:hover {
-  background: #ebe9e0;
-  color: var(--text);
-  border-left-color: transparent;
+  background: rgba(246, 240, 230, 0.05);
+  color: var(--on-rail);
+  border-left-color: rgba(250, 80, 15, 0.7);
   text-decoration: none;
 }
 
@@ -1380,21 +1479,37 @@ button.btn {
 }
 
 .slip-card {
+  background: linear-gradient(180deg, #fffef9 0%, #fcfaf2 100%);
   border-radius: var(--radius-card);
   transition:
     border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .slip-card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-soft);
+  border-color: #ffd9c4;
+  box-shadow: 0 0 0 1px rgba(250, 80, 15, 0.18), var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+/* The featured (best-pick) slip glows like the ticket it is. */
+.slip-card.featured {
+  border-color: rgba(250, 80, 15, 0.4);
+  box-shadow: 0 0 0 1px rgba(250, 80, 15, 0.16), var(--shadow-soft);
+}
+
+.slip-card.featured .slip-odds {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .desk-places {
   margin-top: 2px;
   padding-top: 10px;
-  border-top: 1px solid #e5e2d8;
+  border-top: 1px solid var(--rail-line);
 }
 
 @media (max-width: 700px) {
