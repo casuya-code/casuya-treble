@@ -206,6 +206,11 @@ export const SHELL = {
     choiceThree: "Top 3",
     generateBest: "Generate best slip",
     generateTop: "Generate top 3",
+    replacePendingTitle: "Replace your pending slips?",
+    replacePendingBody:
+      "Generating now deletes the pending slips in this market that you have not placed ({n}), then builds a new one. This cannot be undone.",
+    replacePendingConfirm: "Delete and generate",
+    replacePendingCancel: "Keep my slips",
     oneOnly: "One slip only",
     includeAlt: "Include alternatives",
     refresh: "Refresh",
@@ -421,6 +426,11 @@ export const SHELL = {
     choiceThree: "3 bora",
     generateBest: "Tengeneza tiketi bora",
     generateTop: "Tengeneza 3 bora",
+    replacePendingTitle: "Badilisha tiketi zako zinazosubiri?",
+    replacePendingBody:
+      "Kutengeneza sasa hufuta tiketi zinazosubiri katika soko hili ambazo haujaweka ({n}), kisha hutengeneza mpya. Hili haliwezi kurudishwa.",
+    replacePendingConfirm: "Futa na tengeneza",
+    replacePendingCancel: "Acha tiketi zangu",
     oneOnly: "Tiketi moja tu",
     includeAlt: "Ongeza chaguo zingine",
     refresh: "Onyesha upya",

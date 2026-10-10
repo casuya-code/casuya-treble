@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { LangSwitch, useLandingLang } from "@/components/LandingLang";
 import { StatusKind } from "@/components/StatusBadge";
-import { formatDay, Lang } from "@/lib/landingCopy";
+import { fill, formatDay, Lang } from "@/lib/landingCopy";
 
 type Filter = StatusKind;
 type Market = "goals" | "corners";
@@ -32,9 +32,14 @@ type Props = {
   wantGoals: boolean;
   wantCorners: boolean;
   showTools: boolean;
+  /** True while the sidebar is asking before it deletes pending slips. */
+  confirmReplace: boolean;
+  /** Pending, unplaced slips this run would delete. */
+  deletablePending: number;
   onFilter: (filter: Filter) => void;
   onDate: (day: string | null) => void;
   onGenerate: () => void;
+  onCancelGenerate: () => void;
   onAlternatives: (value: boolean) => void;
   onToggleMarket: (market: Market) => void;
   onRefresh: () => void;
@@ -55,9 +60,12 @@ export function DeskSide({
   wantGoals,
   wantCorners,
   showTools,
+  confirmReplace,
+  deletablePending,
   onFilter,
   onDate,
   onGenerate,
+  onCancelGenerate,
   onAlternatives,
   onToggleMarket,
   onRefresh,
@@ -122,9 +130,24 @@ export function DeskSide({
             {t.choiceThree}
           </button>
         </div>
-        <button type="button" className="btn primary desk-generate" disabled={loading} onClick={onGenerate}>
-          {showAlternatives ? t.generateTop : t.generateBest}
-        </button>
+        {confirmReplace ? (
+          <div className="desk-confirm" role="alertdialog" aria-label={t.replacePendingTitle}>
+            <p className="desk-confirm-title">{t.replacePendingTitle}</p>
+            <p className="desk-confirm-body">{fill(t.replacePendingBody, { n: deletablePending })}</p>
+            <div className="desk-confirm-actions">
+              <button type="button" className="btn primary" disabled={loading} onClick={onGenerate}>
+                {t.replacePendingConfirm}
+              </button>
+              <button type="button" className="desk-text" disabled={loading} onClick={onCancelGenerate}>
+                {t.replacePendingCancel}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="btn primary desk-generate" disabled={loading} onClick={onGenerate}>
+            {showAlternatives ? t.generateTop : t.generateBest}
+          </button>
+        )}
         <p className="desk-range">{t.oddsRangeNote}</p>
       </section>
 

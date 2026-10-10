@@ -266,6 +266,9 @@ function DeskPage() {
 
   const [sideOpen, setSideOpen] = useState(false);
 
+  /** True while Generate asks before it deletes pending slips. */
+  const [confirmReplace, setConfirmReplace] = useState(false);
+
   const [retentionDays, setRetentionDays] = useState(90);
 
 
@@ -650,6 +653,26 @@ function DeskPage() {
 
 
 
+  /** Pending, unplaced slips a Generate run in the current markets would delete. */
+
+  const deletablePending = useMemo(() => {
+
+    return slips.filter((slip) => {
+
+      if (slip.status !== "PENDING" || slip.placed_on_betpawa) return false;
+
+      const kinds = new Set(slip.legs.map((leg) => (leg.market.includes("Corner") ? "corners" : "goals")));
+
+      if (kinds.size === 0) kinds.add("goals");
+
+      return [...kinds].every((kind) => markets.includes(kind as Market));
+
+    }).length;
+
+  }, [slips, markets]);
+
+
+
   async function runAction(action: () => Promise<void>) {
 
     setLoading(true);
@@ -720,6 +743,16 @@ function DeskPage() {
 
     closePhoneSide();
 
+    if (deletablePending > 0 && !confirmReplace) {
+
+      setConfirmReplace(true);
+
+      return;
+
+    }
+
+    setConfirmReplace(false);
+
     void runAction(async () => {
 
       const created = await api.generateSlips({
@@ -760,6 +793,14 @@ function DeskPage() {
 
 
 
+  function cancelReplace() {
+
+    setConfirmReplace(false);
+
+  }
+
+
+
   return (
 
     <>
@@ -794,6 +835,10 @@ function DeskPage() {
 
           showTools={showTools}
 
+          confirmReplace={confirmReplace}
+
+          deletablePending={deletablePending}
+
           onFilter={(next) => {
 
             setFilter(next);
@@ -811,6 +856,8 @@ function DeskPage() {
           }}
 
           onGenerate={generate}
+
+          onCancelGenerate={cancelReplace}
 
           onAlternatives={setShowAlternatives}
 
