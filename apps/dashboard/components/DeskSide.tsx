@@ -130,7 +130,7 @@ export function DeskSide({
             {t.choiceThree}
           </button>
         </div>
-        {confirmReplace ? (
+        {confirmReplace && deletablePending > 0 ? (
           <div className="desk-confirm" role="alertdialog" aria-label={t.replacePendingTitle}>
             <p className="desk-confirm-title">{t.replacePendingTitle}</p>
             <p className="desk-confirm-body">{fill(t.replacePendingBody, { n: deletablePending })}</p>
