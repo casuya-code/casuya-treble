@@ -26,6 +26,9 @@ MAX_REST_DAYS = 30.0
 TAIL_PAD = 40
 
 #: Feature order is part of the serialised model; never reorder, only append.
+#: The trailing block maps FootyStats/APWin-style stats onto local data: each
+#: team's recent five-match corner form and empirical over-9.5 rates for the
+#: teams and the league (a league split of the total was tried and ablated out).
 FEATURE_NAMES = (
     "expected_total",
     "league_total",
@@ -39,6 +42,11 @@ FEATURE_NAMES = (
     "away_games",
     "rest_home",
     "rest_away",
+    "home_form5",
+    "away_form5",
+    "home_over95_rate",
+    "away_over95_rate",
+    "league_over95_rate",
 )
 
 
@@ -76,6 +84,24 @@ def build_features(
     def against_team(row, key):
         return row.away_corners if row.home_key == key else row.home_corners
 
+    # FootyStats-style: each team's recent corners (form), the league's empirical
+    # over-9.5 share, and per-team over-9.5 rates. ``finished`` is newest first.
+    def team_totals(key: str, n: int) -> list[float]:
+        totals: list[float] = []
+        for row in finished:
+            if row.home_key != key and row.away_key != key:
+                continue
+            totals.append(float(row.home_corners + row.away_corners))
+            if len(totals) >= n:
+                break
+        return totals
+
+    league_over95 = _share_over([r.home_corners + r.away_corners for r in finished], 9.5) or 0.0
+    home_form5 = _mean(team_totals(home_key, 5)) or 0.0
+    away_form5 = _mean(team_totals(away_key, 5)) or 0.0
+    home_over95_rate = _share_over(team_totals(home_key, 10), 9.5) or league_over95
+    away_over95_rate = _share_over(team_totals(away_key, 10), 9.5) or league_over95
+
     feats = {
         "expected_total": expected,
         "league_total": (league_home or 0.0) + (league_away or 0.0),
@@ -89,6 +115,11 @@ def build_features(
         "away_games": float(len(away_venue)),
         "rest_home": _rest_days(finished, home_key, kickoff_day),
         "rest_away": _rest_days(finished, away_key, kickoff_day),
+        "home_form5": home_form5,
+        "away_form5": away_form5,
+        "home_over95_rate": home_over95_rate,
+        "away_over95_rate": away_over95_rate,
+        "league_over95_rate": league_over95,
     }
     return feats
 
@@ -103,6 +134,19 @@ def _plain_avg(rows: list, pick) -> float | None:
     if not values:
         return None
     return sum(values) / len(values)
+
+
+def _mean(values: list) -> float | None:
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def _share_over(values: list, threshold: float) -> float | None:
+    """Fraction of the values that clear a .5 line, e.g. the over-9.5 rate."""
+    if not values:
+        return None
+    return sum(1 for v in values if v > threshold) / len(values)
 
 
 def _rest_days(rows: list, key: str, kickoff_day) -> float:

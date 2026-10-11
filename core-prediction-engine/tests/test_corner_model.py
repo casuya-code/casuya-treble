@@ -97,6 +97,23 @@ def test_features_are_produced_from_a_healthy_history():
     assert feats["rest_home"] > 0
 
 
+def test_footystats_style_form_and_over95_features():
+    # Every fixture here finishes on 10 corners, so the five-match form (FootyStats/
+    # APWin) and the over-9.5 rates are all pinned and measurable.
+    rows = project_corner_history(_history())
+    feats = build_features(
+        rows,
+        home_key="hosts",
+        away_key="guests",
+        today=datetime(2026, 8, 20, tzinfo=timezone.utc).date(),
+        kickoff_day=datetime(2026, 8, 20, tzinfo=timezone.utc).date(),
+    )
+    assert feats is not None
+    assert feats["home_form5"] == 10.0 and feats["away_form5"] == 10.0
+    assert feats["home_over95_rate"] == 1.0 and feats["away_over95_rate"] == 1.0
+    assert feats["league_over95_rate"] == 1.0
+
+
 def test_the_booster_learns_a_linear_signal():
     samples = []
     for i in range(240):
