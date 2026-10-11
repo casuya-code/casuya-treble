@@ -1,0 +1,8 @@
+{
+  "name": "casuya-treble",
+  "private": true,
+  "description": "Railway IaC authoring SDK holder (see .railway/railway.ts)",
+  "devDependencies": {
+    "railway": "3.13.1"
+  }
+}
