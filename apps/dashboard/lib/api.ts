@@ -85,7 +85,7 @@ export type GenerateResult = {
 };
 
 export type GenerateOptions = {
-  /** Combined odds floor. Omit to let the market's own floor apply (goals 1.30, corners 1.90). */
+  /** Combined odds floor. Omit to let the API pick: 1.30 when goals are in the run, else 1.90. */
   minOdds?: number;
   /** Combined odds ceiling for a generated slip. Default 6. */
   maxOdds?: number;

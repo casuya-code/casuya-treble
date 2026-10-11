@@ -127,10 +127,11 @@ async def generate_slips(
     want_goals = GOALS in requested
     want_corners = CORNERS in requested
     both = want_goals and want_corners
-    # An explicit min_odds wins; otherwise corners keep the stricter floor and a
-    # goals-only run may take the shorter Over 1.5 legs.
+    # An explicit min_odds wins. Otherwise the looser of the requested markets'
+    # floors applies: any run that includes goals may take the short Over 1.5
+    # legs at 1.30, while a corners-only run keeps the stricter 1.90.
     if min_odds is None:
-        min_odds = CORNERS_MIN_ODDS if want_corners else GOALS_MIN_ODDS
+        min_odds = GOALS_MIN_ODDS if want_goals else CORNERS_MIN_ODDS
 
     result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
     all_fixtures = list(result.scalars().all())
