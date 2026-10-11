@@ -38,11 +38,10 @@ from shared.weather import matches_held_for_weather
 
 router = APIRouter(prefix="/slips", tags=["slip-generator"])
 
-#: Combined-odds floor for a generated slip. Over 1.5 goals legs are short, so the
-#: goals market takes a lower combined price than the corner markets, whose lines
-#: usually sit well above it anyway.
-GOALS_MIN_ODDS = 1.30
-CORNERS_MIN_ODDS = 1.90
+#: Combined-odds floor for a generated slip. Both the Over 1.5 legs and the
+#: corner lines carry short prices, so the band opens at 1.30; the per-leg edge
+#: test, not the floor, is what keeps a pick honest.
+DEFAULT_MIN_ODDS = 1.30
 
 
 def _slip_to_out(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> SlipOut:
@@ -108,7 +107,7 @@ class GenerateResult(BaseModel):
     # not requested, so a corners run never reads it as a coverage figure.
     modeled: int | None = None
     # The combined-odds band actually applied, so the desk can state it exactly.
-    min_odds: float = CORNERS_MIN_ODDS
+    min_odds: float = DEFAULT_MIN_ODDS
     max_odds: float = 6.0
 
 
@@ -127,11 +126,9 @@ async def generate_slips(
     want_goals = GOALS in requested
     want_corners = CORNERS in requested
     both = want_goals and want_corners
-    # An explicit min_odds wins. Otherwise the looser of the requested markets'
-    # floors applies: any run that includes goals may take the short Over 1.5
-    # legs at 1.30, while a corners-only run keeps the stricter 1.90.
+    # An explicit min_odds wins; otherwise every market opens at the same floor.
     if min_odds is None:
-        min_odds = GOALS_MIN_ODDS if want_goals else CORNERS_MIN_ODDS
+        min_odds = DEFAULT_MIN_ODDS
 
     result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
     all_fixtures = list(result.scalars().all())

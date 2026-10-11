@@ -85,7 +85,7 @@ export type GenerateResult = {
 };
 
 export type GenerateOptions = {
-  /** Combined odds floor. Omit to let the API pick: 1.30 when goals are in the run, else 1.90. */
+  /** Combined odds floor. Omit to let the API apply its floor (1.30). */
   minOdds?: number;
   /** Combined odds ceiling for a generated slip. Default 6. */
   maxOdds?: number;
@@ -327,7 +327,7 @@ export const api = {
       max_slips: String(maxSlips),
       replace_pending: String(replacePending),
     });
-    // Omitted, the API applies the market's own floor (goals 1.30, corners 1.90).
+    // Omitted, the API applies its own floor (1.30).
     if (minOdds != null) params.set("min_odds", String(minOdds));
     for (const value of markets) params.append("market", value);
     return request<GenerateResult>(`/slips/generate?${params}`, { method: "POST" });

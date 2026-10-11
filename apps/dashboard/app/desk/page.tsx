@@ -136,7 +136,7 @@ function trebleGapMessage(
 
     modeled: result.modeled ?? 0,
 
-    min: (result.min_odds ?? 1.9).toFixed(2),
+    min: (result.min_odds ?? 1.3).toFixed(2),
 
     max: (result.max_odds ?? 6).toFixed(2),
 
