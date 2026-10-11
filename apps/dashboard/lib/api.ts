@@ -309,8 +309,8 @@ export const api = {
   generateSlips: (opts: GenerateOptions = {}) => {
     const {
       minOdds = 1.9,
-      maxOdds = 2.5,
-      maxLegs = 3,
+      maxOdds = 6,
+      maxLegs = 4,
       maxSlips = 1,
       replacePending = true,
       market = "goals",
