@@ -6,8 +6,12 @@ import { api, HistoryLeg, HistorySlip, PublicHistory } from "@/lib/api";
 import { formatDay, formatMoney, formatStake } from "@/lib/landingCopy";
 
 function scoreText(leg: HistoryLeg): string {
-  if ((leg.market || "").toLowerCase().includes("corner")) {
-    return leg.fh_corners == null ? "—" : String(leg.fh_corners);
+  const market = (leg.market || "").toLowerCase();
+  if (market.includes("corner")) {
+    if (market.includes("1h")) {
+      return leg.fh_corners == null ? "—" : String(leg.fh_corners);
+    }
+    return leg.total_corners == null ? "—" : String(leg.total_corners);
   }
   if (leg.home_goals == null || leg.away_goals == null) return "—";
   return `${leg.home_goals}–${leg.away_goals}`;

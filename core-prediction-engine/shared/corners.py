@@ -74,14 +74,18 @@ def project_corner_history(matches) -> list[CornerMatch]:
     return rows
 
 
-def _corners_from_rows(
+def _corner_total_from_rows(
     candidates: list,
     *,
     home_key: str,
     away_key: str,
     today: date,
 ) -> float | None:
-    """Expected first-half corners from rows already known to be in-league."""
+    """Raw full-match expected corners from rows already known to be in-league.
+
+    This is the un-scaled total the GBDT correction is layered on; the 1H picker
+    scales it by FIRST_HALF_SHARE.
+    """
     finished = []
     seen: set[tuple[str, str, str]] = set()
     for row in candidates:
@@ -125,6 +129,20 @@ def _corners_from_rows(
     # 1H line into a fake edge. A 1.41x corner rate becomes sqrt(1.41) = 1.19x.
     multiplier = (raw_total / league_total) ** 0.5 if raw_total > 0 else 1.0
     total = min(max(league_total * multiplier, 1.0), 14.0)
+    return float(total)
+
+
+def _corners_from_rows(
+    candidates: list,
+    *,
+    home_key: str,
+    away_key: str,
+    today: date,
+) -> float | None:
+    """Expected first-half corners from rows already known to be in-league."""
+    total = _corner_total_from_rows(candidates, home_key=home_key, away_key=away_key, today=today)
+    if total is None:
+        return None
     return round(total * FIRST_HALF_SHARE, 3)
 
 
@@ -156,6 +174,23 @@ def estimate_corners_from_index(
 ) -> float | None:
     """Same estimate, against a prebuilt index. One projection serves the whole run."""
     return _corners_from_rows(
+        index.for_league(league),
+        home_key=team_key(home_team),
+        away_key=team_key(away_team),
+        today=today,
+    )
+
+
+def estimate_ft_corners_from_index(
+    index: HistoryIndex,
+    *,
+    home_team: str,
+    away_team: str,
+    league: str,
+    today: date,
+) -> float | None:
+    """Expected full-match corners, against a prebuilt index (the GBDT's prior)."""
+    return _corner_total_from_rows(
         index.for_league(league),
         home_key=team_key(home_team),
         away_key=team_key(away_team),
@@ -212,13 +247,14 @@ def corner_leg(fixture, history: list, index: HistoryIndex | None = None) -> Can
     )
 
 
-def collect_corner_legs(fixtures: list, history: list) -> list[CandidateLeg]:
+def collect_corner_legs(fixtures: list, history: list, index: HistoryIndex | None = None) -> list[CandidateLeg]:
     """Every fixture where a corner line carries a positive edge.
 
     The history is projected once and shared across every fixture; projecting it
     per fixture was the bulk of the generate time.
     """
-    index = HistoryIndex(project_corner_history(history))
+    if index is None:
+        index = HistoryIndex(project_corner_history(history))
     legs: list[CandidateLeg] = []
     for fixture in fixtures:
         leg = corner_leg(fixture, history, index)
@@ -237,7 +273,16 @@ def find_best_corner_trebles(
     max_legs: int = 3,
     limit: int = 5,
 ) -> list[TrebleCandidate]:
-    legs = collect_corner_legs(fixtures, history)
+    index = HistoryIndex(project_corner_history(history))
+    legs = collect_corner_legs(fixtures, history, index)
+    # The full-match market (Over/Under at the book's line) comes from the
+    # trained corner GBDT when an artifact is present. Import lazily: corner_model
+    # imports this module at load time.
+    from shared.corner_model import cached_model, collect_ft_corner_legs
+
+    model = cached_model()
+    if model is not None:
+        legs.extend(collect_ft_corner_legs(fixtures, history, model, index))
     if max_combined_odds is None and max_legs == 3:
         # Legacy path: same-day 3-leg trebles, kept for callers that want them.
         return trebles_from_legs(

@@ -58,6 +58,8 @@ async def init_db() -> None:
         await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS fh_corner_over_65 DOUBLE PRECISION"))
         await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS sportradar_id VARCHAR(32)"))
         await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS fh_corners INTEGER"))
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS ft_corner_lines JSON"))
+        await conn.execute(text("ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS total_corners INTEGER"))
         await conn.execute(
             text(
                 "ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS fh_half_complete BOOLEAN NOT NULL DEFAULT FALSE"

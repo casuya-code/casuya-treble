@@ -16,8 +16,10 @@ from shared.league_names import league_key
 
 OVER_UNDER_FT_MARKET = "5000"
 FH_CORNERS_MARKET = "1096784"
-# The event endpoint returns no markets, so the list view has to ask for both.
-LIST_MARKET_TYPES = (OVER_UNDER_FT_MARKET, FH_CORNERS_MARKET)
+#: Full-match "Total Corners Over/Under - FT": the line TotalCorner's model prices against.
+FT_CORNERS_MARKET = "1096783"
+# The event endpoint returns no markets, so the list view has to ask for every one.
+LIST_MARKET_TYPES = (OVER_UNDER_FT_MARKET, FH_CORNERS_MARKET, FT_CORNERS_MARKET)
 TOTAL_GOALS_LINE = "1.5"
 NEAR_DAYS = 2
 RATED_DAYS = 7
@@ -36,6 +38,8 @@ class BetPawaOver15:
     decimal_odds: float
     #: 1H corner Over prices keyed by line, e.g. {"4.5": 1.52}.
     fh_corner_overs: dict[str, float] = field(default_factory=dict)
+    #: Full-match corner lines keyed by total, e.g. {"9.5": {"over": 1.94, "under": 1.66}}.
+    ft_corner_lines: dict[str, dict[str, float]] = field(default_factory=dict)
 
 
 @dataclass
@@ -140,6 +144,7 @@ def parse_events_payload(payload: dict | list) -> list[BetPawaOver15]:
             continue
 
         corners = extract_fh_corner_overs(event)
+        ft_lines = extract_ft_corner_lines(event)
 
         participants = event["participants"]
         home = _participant_name(participants, 1)
@@ -157,6 +162,7 @@ def parse_events_payload(payload: dict | list) -> list[BetPawaOver15]:
                 kickoff_at=_parse_start(str(event["startTime"])),
                 decimal_odds=odds,
                 fh_corner_overs=corners,
+                ft_corner_lines=ft_lines,
             )
         )
 
@@ -202,6 +208,38 @@ def extract_fh_corner_overs(event: dict) -> dict[str, float]:
                 odds = float(price["odds"])
                 if odds > 1.0:
                     found[total] = round(odds, 3)
+    return found
+
+
+def extract_ft_corner_lines(event: dict) -> dict[str, dict[str, float]]:
+    """Full-match Total Corners Over/Under, keyed by line: {"9.5": {"over": .., "under": ..}}.
+
+    Unlike the 1H market this keeps both sides, because the model prices a side
+    against the price the book actually quotes for it.
+    """
+    found: dict[str, dict[str, float]] = {}
+    for market in event.get("markets") or []:
+        market_type = market.get("marketType") or {}
+        name = str(market_type.get("name") or "")
+        if str(market_type.get("id")) != FT_CORNERS_MARKET and "Total Corners Over/Under - FT" not in name:
+            continue
+        for row in market.get("row") or []:
+            total = str((row.get("specifier") or {}).get("total") or "")
+            if not total or total in found:
+                continue
+            side: dict[str, float] = {}
+            for price in row.get("prices") or []:
+                label = str(price.get("name") or "").lower()
+                if label not in ("over", "under") or price.get("odds") is None:
+                    continue
+                try:
+                    odds = float(price["odds"])
+                except (TypeError, ValueError):
+                    continue
+                if odds > 1.0:
+                    side[label] = round(odds, 3)
+            if side:
+                found[total] = side
     return found
 
 

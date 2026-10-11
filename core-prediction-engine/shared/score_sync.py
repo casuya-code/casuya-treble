@@ -7,11 +7,11 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.betpawa_client import BetPawaError, fetch_event_payload, parse_event_score, sportradar_match_id
-from shared.corner_results import fetch_first_half_corners
+from shared.corner_results import fetch_corner_counts
 from shared.models import Fixture, MatchStatus, SlipLeg
 from shared.tracker_logic import recompute_all_slip_statuses
 
@@ -52,7 +52,6 @@ async def sync_betpawa_scores(db: AsyncSession, *, force: bool = False) -> int:
                 Fixture.external_id.like("betpawa:%"),
                 Fixture.kickoff_at <= moment,
                 SlipLeg.market.contains("Corner"),
-                or_(Fixture.fh_half_complete.is_(False), Fixture.fh_half_complete.is_(None)),
             )
             .distinct()
         )
@@ -75,11 +74,13 @@ async def sync_betpawa_scores(db: AsyncSession, *, force: bool = False) -> int:
             match_id = sportradar_match_id(payload) if payload else None
             match_id = match_id or fixture.sportradar_id
             corners = None
-            if fixture.id in corner_ids and match_id and not fixture.fh_half_complete:
-                try:
-                    corners = await fetch_first_half_corners(match_id)
-                except Exception:
-                    logger.warning("corner fetch failed for %s", fixture.external_id)
+            if fixture.id in corner_ids and match_id:
+                need_total = fixture.status != MatchStatus.FINISHED or fixture.total_corners is None
+                if need_total:
+                    try:
+                        corners = await fetch_corner_counts(match_id)
+                    except Exception:
+                        logger.warning("corner fetch failed for %s", fixture.external_id)
             return fixture, score, match_id, corners
 
         try:
@@ -98,10 +99,18 @@ async def sync_betpawa_scores(db: AsyncSession, *, force: bool = False) -> int:
                 fixture.status = MatchStatus.LIVE if score.live else MatchStatus.FINISHED
                 updated += 1
             if corners is not None:
-                count, half_done = corners
-                fixture.fh_corners = count
-                fixture.fh_half_complete = half_done
-                updated += 1
+                half, total = corners
+                if half is not None and not fixture.fh_half_complete:
+                    count, half_done = half
+                    fixture.fh_corners = count
+                    fixture.fh_half_complete = half_done
+                    updated += 1
+                if total is not None:
+                    total_count, finished = total
+                    fixture.total_corners = total_count
+                    if finished:
+                        fixture.status = MatchStatus.FINISHED
+                    updated += 1
         if updated:
             await db.commit()
             await recompute_all_slip_statuses(db)

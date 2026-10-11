@@ -59,6 +59,7 @@ def _slip_to_out(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> SlipOut:
                 away_goals=fx.away_goals,
                 fh_corners=fx.fh_corners,
                 fh_half_complete=bool(fx.fh_half_complete),
+                total_corners=fx.total_corners,
                 match_finished=fx.status == MatchStatus.FINISHED,
             )
         )
@@ -431,6 +432,9 @@ async def public_placed_history(db: AsyncSession = Depends(get_db)) -> PublicHis
                     market=leg.market,
                     fh_corners=fixture.fh_corners,
                     fh_half_complete=bool(fixture.fh_half_complete),
+                    home_corners=fixture.home_corners,
+                    away_corners=fixture.away_corners,
+                    total_corners=fixture.total_corners,
                 )
             )
         if legs:

@@ -15,9 +15,16 @@ export function cornerLine(market: string): number | null {
 export function legKind(leg: SlipLeg): StatusKind {
   if (leg.market.toLowerCase().includes("corner")) {
     const line = cornerLine(leg.market);
-    if (leg.fh_corners == null || line == null) return "PENDING";
-    if (leg.fh_corners > line) return "WON";
-    if (leg.fh_half_complete || leg.match_finished) return "LOST";
+    const under = leg.market.toLowerCase().includes("under");
+    if (leg.market.toLowerCase().includes("1h")) {
+      if (leg.fh_corners == null || line == null) return "PENDING";
+      if (leg.fh_corners > line) return "WON";
+      if (leg.fh_half_complete || leg.match_finished) return "LOST";
+      return "PENDING";
+    }
+    if (leg.total_corners == null || line == null) return "PENDING";
+    if (under ? leg.total_corners < line : leg.total_corners > line) return "WON";
+    if (leg.match_finished) return "LOST";
     return "PENDING";
   }
   if (leg.home_goals == null || leg.away_goals == null) return "PENDING";
@@ -28,7 +35,10 @@ export function legKind(leg: SlipLeg): StatusKind {
 
 function legScore(leg: SlipLeg): string {
   if (leg.market.toLowerCase().includes("corner")) {
-    return leg.fh_corners == null ? "—" : String(leg.fh_corners);
+    if (leg.market.toLowerCase().includes("1h")) {
+      return leg.fh_corners == null ? "—" : String(leg.fh_corners);
+    }
+    return leg.total_corners == null ? "—" : String(leg.total_corners);
   }
   if (leg.home_goals != null && leg.away_goals != null) return `${leg.home_goals}–${leg.away_goals}`;
   return "—";

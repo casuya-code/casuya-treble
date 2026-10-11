@@ -59,6 +59,7 @@ class SlipLegOut(BaseModel):
     away_goals: int | None = None
     fh_corners: int | None = None
     fh_half_complete: bool = False
+    total_corners: int | None = None
     match_finished: bool = False
 
 

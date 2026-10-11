@@ -25,6 +25,9 @@ class HistoryLeg:
     market: str = "Over 1.5 Goals"
     fh_corners: int | None = None
     fh_half_complete: bool = False
+    home_corners: int | None = None
+    away_corners: int | None = None
+    total_corners: int | None = None
 
 
 @dataclass
@@ -37,8 +40,13 @@ class HistorySlip:
 
 def leg_result(leg: HistoryLeg) -> str:
     if "Corner" in leg.market:
-        half_done = leg.fh_half_complete or (leg.finished and leg.fh_corners is not None)
-        return corner_leg_outcome(leg.market, leg.fh_corners, half_done)
+        if "1H" in leg.market:
+            half_done = leg.fh_half_complete or (leg.finished and leg.fh_corners is not None)
+            return corner_leg_outcome(leg.market, leg.fh_corners, half_done)
+        corners = leg.total_corners
+        if corners is None and leg.home_corners is not None and leg.away_corners is not None:
+            corners = leg.home_corners + leg.away_corners
+        return corner_leg_outcome(leg.market, corners, leg.finished)
     if leg.home_goals is None or leg.away_goals is None:
         return "pending"
     if leg_won_over_15(leg.home_goals, leg.away_goals):
@@ -149,6 +157,7 @@ def build_public_history(slips: list[HistorySlip]) -> dict:
                         "home_goals": leg.home_goals,
                         "away_goals": leg.away_goals,
                         "fh_corners": leg.fh_corners,
+                        "total_corners": leg.total_corners,
                         "practice": leg.practice,
                     }
                     for leg in slip.legs

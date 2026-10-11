@@ -71,6 +71,10 @@ class Fixture(Base):
     fh_corner_over_65: Mapped[float | None] = mapped_column(Float, nullable=True)
     sportradar_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     fh_corners: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Full-match Total Corners Over/Under lines, e.g. {"9.5": {"over": 1.94, "under": 1.66}}.
+    ft_corner_lines: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    #: Full-match corner total from the live timeline; settles full-time corner legs.
+    total_corners: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fh_half_complete: Mapped[bool] = mapped_column(default=False)
     status: Mapped[MatchStatus] = mapped_column(
         Enum(MatchStatus, name="match_status"), default=MatchStatus.SCHEDULED

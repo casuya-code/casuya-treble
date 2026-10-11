@@ -20,6 +20,7 @@ export interface SlipLeg {
   away_goals?: number | null;
   fh_corners?: number | null;
   fh_half_complete?: boolean;
+  total_corners?: number | null;
   match_finished?: boolean;
 }
 
@@ -368,6 +369,7 @@ export type HistoryLeg = {
   home_goals: number | null;
   away_goals: number | null;
   fh_corners?: number | null;
+  total_corners?: number | null;
   practice: boolean;
 };
 

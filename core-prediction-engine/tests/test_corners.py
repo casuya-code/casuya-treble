@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from shared.betpawa_client import extract_fh_corner_overs
+from shared.betpawa_client import extract_fh_corner_overs, extract_ft_corner_lines
 from shared.corners import _priced_lines, corner_leg, estimate_first_half_corners, prob_over_line
 from shared.football_data import parse_football_data_csv
 from shared.models import Fixture
@@ -37,6 +37,33 @@ def test_every_offered_first_half_corner_line_is_read():
     }
     # 4.5 is a valid line now; 2.5 carries no price and 7.5 is not one we price.
     assert extract_fh_corner_overs(event) == {"3.5": 1.54, "4.5": 2.16}
+
+
+def test_every_offered_full_time_corner_line_is_read_with_both_sides():
+    event = {
+        "markets": [
+            {
+                "marketType": {"id": "1096783", "name": "Total Corners Over/Under - FT"},
+                "row": [
+                    {"specifier": {"total": "9.5"}, "prices": [{"name": "Over", "odds": 1.94}, {"name": "Under", "odds": 1.66}]},
+                    {"specifier": {"total": "10.5"}, "prices": [{"name": "Over", "odds": 2.49}, {"name": "Under", "odds": 1.39}]},
+                    {"specifier": {"total": "11.5"}, "prices": [{"name": "Over", "odds": 3.32}]},
+                    {"specifier": {"total": ""}, "prices": [{"name": "Over", "odds": 1.5}]},
+                ],
+            },
+            {
+                "marketType": {"id": "1096784", "name": "Total Corners Over/Under - 1H"},
+                "row": [{"specifier": {"total": "4.5"}, "prices": [{"name": "Over", "odds": 2.16}]}],
+            },
+        ]
+    }
+    assert extract_ft_corner_lines(event) == {
+        "9.5": {"over": 1.94, "under": 1.66},
+        "10.5": {"over": 2.49, "under": 1.39},
+        "11.5": {"over": 3.32},
+    }
+    # The 1H market must never be read as a full-time line.
+    assert "4.5" not in extract_ft_corner_lines(event)
 
 
 def test_every_priced_line_reaches_the_picker():

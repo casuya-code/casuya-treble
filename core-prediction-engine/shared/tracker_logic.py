@@ -28,11 +28,18 @@ def slip_status_from_fixtures(fixtures: list[Fixture], legs=None) -> SlipStatus:
     for index, fixture in enumerate(fixtures):
         market = getattr(legs[index], "market", "") if legs is not None and index < len(legs) else ""
         if "Corner" in str(market):
-            count = getattr(fixture, "fh_corners", None)
-            half_done = bool(getattr(fixture, "fh_half_complete", False))
-            if count is not None and fixture.status == MatchStatus.FINISHED:
-                half_done = True
-            outcomes.append(corner_leg_outcome(str(market), count, half_done))
+            if "1H" in str(market):
+                count = getattr(fixture, "fh_corners", None)
+                done = bool(getattr(fixture, "fh_half_complete", False))
+                if count is not None and fixture.status == MatchStatus.FINISHED:
+                    done = True
+            else:
+                total = getattr(fixture, "total_corners", None)
+                if total is None and fixture.home_corners is not None and fixture.away_corners is not None:
+                    total = fixture.home_corners + fixture.away_corners
+                count = total
+                done = fixture.status == MatchStatus.FINISHED
+            outcomes.append(corner_leg_outcome(str(market), count, done))
             continue
         if fixture.home_goals is None or fixture.away_goals is None:
             outcomes.append("pending")

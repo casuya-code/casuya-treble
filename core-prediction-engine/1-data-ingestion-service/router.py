@@ -41,6 +41,13 @@ def _set_corner_prices(fixture: Fixture, prices: dict[str, float]) -> None:
             setattr(fixture, field, float(odds))
 
 
+def _set_ft_corner_lines(fixture: Fixture, lines: dict) -> None:
+    """Full-match Total Corners lines with both sides. Never blanks a line already held."""
+    rows = {line: side for line, side in (lines or {}).items() if side}
+    if rows:
+        fixture.ft_corner_lines = rows
+
+
 async def _store_sportradar_ids(db, external_ids: list[str]) -> None:
     """Attach the Sportradar widget id used to read the live corner timeline.
 
@@ -204,6 +211,7 @@ async def _scrape_and_store(
                 fixture.opening_odds_over_15 = row.decimal_odds
             fixture.closing_odds_over_15 = row.decimal_odds
             _set_corner_prices(fixture, row.fh_corner_overs)
+            _set_ft_corner_lines(fixture, row.ft_corner_lines)
             updated += 1
         else:
             new_fixture = Fixture(
@@ -218,6 +226,7 @@ async def _scrape_and_store(
                 lambda_away=1.1,
             )
             _set_corner_prices(new_fixture, row.fh_corner_overs)
+            _set_ft_corner_lines(new_fixture, row.ft_corner_lines)
             db.add(new_fixture)
             imported += 1
 

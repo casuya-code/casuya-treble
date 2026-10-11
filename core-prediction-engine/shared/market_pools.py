@@ -1,6 +1,7 @@
 """Over 1.5 Goals and first-half corners drawn from one pool so a treble can mix them."""
 
-from shared.corners import MARKET, _priced_lines, collect_corner_legs
+from shared.corner_model import cached_model, collect_ft_corner_legs, priced_ft_corner_leg
+from shared.corners import MARKET, _priced_lines, collect_corner_legs, project_corner_history
 from shared.poisson import prob_over_15
 from shared.time_buckets import local_day
 from shared.treble_generator import (
@@ -78,10 +79,15 @@ def collect_priced_legs(
             if leg is not None:
                 legs.append(leg)
     if want_corners:
+        model = cached_model()
         for fixture in fixtures:
             leg = _corner_priced_leg(fixture)
             if leg is not None:
                 legs.append(leg)
+            if model is not None:
+                ft_leg = priced_ft_corner_leg(fixture)
+                if ft_leg is not None:
+                    legs.append(ft_leg)
     return legs
 
 
@@ -104,7 +110,13 @@ def build_leg_pool(
     if want_goals:
         legs.extend(collect_goals_legs(goals))
     if want_corners:
-        legs.extend(collect_corner_legs(fixtures, history))
+        from shared.team_strength import HistoryIndex
+
+        index = HistoryIndex(project_corner_history(history))
+        legs.extend(collect_corner_legs(fixtures, history, index))
+        model = cached_model()
+        if model is not None:
+            legs.extend(collect_ft_corner_legs(fixtures, history, model, index))
     return legs
 
 
