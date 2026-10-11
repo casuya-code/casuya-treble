@@ -42,8 +42,10 @@ async def sync_betpawa_scores(db: AsyncSession, *, force: bool = False) -> int:
                 Fixture.status != MatchStatus.FINISHED,
                 Fixture.kickoff_at <= moment,
             )
-            .distinct()
         )
+        # ``scalars().unique()`` de-dupes the join rows by primary key. A SQL
+        # DISTINCT would instead have to compare every column, and the fixtures
+        # table holds JSON (ft_corner_lines) that Postgres cannot compare.
         fixtures = {row.id: row for row in result.scalars().unique().all()}
         corner_rows = await db.execute(
             select(Fixture)
@@ -53,7 +55,6 @@ async def sync_betpawa_scores(db: AsyncSession, *, force: bool = False) -> int:
                 Fixture.kickoff_at <= moment,
                 SlipLeg.market.contains("Corner"),
             )
-            .distinct()
         )
         corner_ids = set()
         for row in corner_rows.scalars().unique().all():
