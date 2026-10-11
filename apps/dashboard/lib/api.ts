@@ -78,14 +78,18 @@ export type GenerateResult = {
   weather?: WeatherNote[];
   /** Fixtures the Over 1.5 model could estimate. Null when goals were not requested. */
   modeled?: number | null;
+  /** Combined-odds floor actually applied (market specific). */
+  min_odds: number;
+  /** Combined-odds ceiling actually applied. */
+  max_odds: number;
 };
 
 export type GenerateOptions = {
-  /** Combined odds floor for a generated slip. Default 1.9. */
+  /** Combined odds floor. Omit to let the market's own floor apply (goals 1.30, corners 1.90). */
   minOdds?: number;
-  /** Combined odds ceiling for a generated slip. Default 2.5. */
+  /** Combined odds ceiling for a generated slip. Default 6. */
   maxOdds?: number;
-  /** Teams per slip: 1, 2, or 3. Default 3. */
+  /** Teams per slip: 1 to 4. Default 4. */
   maxLegs?: number;
   maxSlips?: number;
   replacePending?: boolean;
@@ -308,7 +312,7 @@ export const api = {
   seedDemo: () => request<{ id: string }[]>("/ingestion/fixtures/seed-demo", { method: "POST" }),
   generateSlips: (opts: GenerateOptions = {}) => {
     const {
-      minOdds = 1.9,
+      minOdds,
       maxOdds = 6,
       maxLegs = 4,
       maxSlips = 1,
@@ -318,12 +322,13 @@ export const api = {
     const requested = Array.isArray(market) ? market : [market];
     const markets = requested.length ? requested : ["goals" as const];
     const params = new URLSearchParams({
-      min_odds: String(minOdds),
       max_odds: String(maxOdds),
       max_legs: String(maxLegs),
       max_slips: String(maxSlips),
       replace_pending: String(replacePending),
     });
+    // Omitted, the API applies the market's own floor (goals 1.30, corners 1.90).
+    if (minOdds != null) params.set("min_odds", String(minOdds));
     for (const value of markets) params.append("market", value);
     return request<GenerateResult>(`/slips/generate?${params}`, { method: "POST" });
   },

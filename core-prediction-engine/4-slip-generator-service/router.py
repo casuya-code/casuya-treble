@@ -38,6 +38,12 @@ from shared.weather import matches_held_for_weather
 
 router = APIRouter(prefix="/slips", tags=["slip-generator"])
 
+#: Combined-odds floor for a generated slip. Over 1.5 goals legs are short, so the
+#: goals market takes a lower combined price than the corner markets, whose lines
+#: usually sit well above it anyway.
+GOALS_MIN_ODDS = 1.30
+CORNERS_MIN_ODDS = 1.90
+
 
 def _slip_to_out(slip: Slip, fixtures_by_id: dict[UUID, Fixture]) -> SlipOut:
     legs_out: list[SlipLegOut] = []
@@ -101,13 +107,16 @@ class GenerateResult(BaseModel):
     # Fixtures the Over 1.5 model could actually estimate. Null when goals were
     # not requested, so a corners run never reads it as a coverage figure.
     modeled: int | None = None
+    # The combined-odds band actually applied, so the desk can state it exactly.
+    min_odds: float = CORNERS_MIN_ODDS
+    max_odds: float = 6.0
 
 
 @router.post("/generate", response_model=GenerateResult)
 async def generate_slips(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-    min_odds: float = Query(1.9, ge=1.01, le=10.0),
+    min_odds: float | None = Query(None, ge=1.01, le=10.0),
     max_odds: float = Query(6.0, ge=2.0, le=6.0),
     max_legs: int = Query(4, ge=1, le=4),
     max_slips: int = Query(1, ge=1, le=10),
@@ -118,6 +127,10 @@ async def generate_slips(
     want_goals = GOALS in requested
     want_corners = CORNERS in requested
     both = want_goals and want_corners
+    # An explicit min_odds wins; otherwise corners keep the stricter floor and a
+    # goals-only run may take the shorter Over 1.5 legs.
+    if min_odds is None:
+        min_odds = CORNERS_MIN_ODDS if want_corners else GOALS_MIN_ODDS
 
     result = await db.execute(select(Fixture).order_by(Fixture.kickoff_at))
     all_fixtures = list(result.scalars().all())
@@ -208,6 +221,8 @@ async def generate_slips(
             same_day=same_day,
             weather=weather,
             modeled=len(goals_pool) if want_goals else None,
+            min_odds=min_odds,
+            max_odds=max_odds,
         )
 
     if replace_pending:
@@ -266,6 +281,8 @@ async def generate_slips(
         same_day=same_day,
         weather=weather,
         modeled=len(goals_pool) if want_goals else None,
+        min_odds=min_odds,
+        max_odds=max_odds,
     )
 
 

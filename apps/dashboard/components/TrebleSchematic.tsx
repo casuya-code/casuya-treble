@@ -41,7 +41,7 @@ export function TrebleSchematic() {
           <span className="treble-eq">2.40</span>
         </p>
         <p className="schematic-caption">
-          Example prices. Casuya Treble uses today’s BetPawa odds and only keeps a slip when the combined price lands between 1.90 and 6.00.
+          Example prices. Casuya Treble uses today’s BetPawa odds and only keeps a slip when the combined price lands between 1.30 and 6.00.
         </p>
       </div>
     </figure>
