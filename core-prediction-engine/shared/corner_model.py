@@ -99,8 +99,11 @@ def build_features(
     league_over95 = _share_over([r.home_corners + r.away_corners for r in finished], 9.5) or 0.0
     home_form5 = _mean(team_totals(home_key, 5)) or 0.0
     away_form5 = _mean(team_totals(away_key, 5)) or 0.0
-    home_over95_rate = _share_over(team_totals(home_key, 10), 9.5) or league_over95
-    away_over95_rate = _share_over(team_totals(away_key, 10), 9.5) or league_over95
+    # A real 0.0 rate (no match over the line) is a value, not a missing one.
+    home_rate = _share_over(team_totals(home_key, 10), 9.5)
+    away_rate = _share_over(team_totals(away_key, 10), 9.5)
+    home_over95_rate = league_over95 if home_rate is None else home_rate
+    away_over95_rate = league_over95 if away_rate is None else away_rate
 
     feats = {
         "expected_total": expected,
@@ -536,6 +539,7 @@ def priced_ft_corner_leg(fixture):
 
     best_line = None
     best_odds = 0.0
+    best_side = "Over"
     for line, prices in _parse_ft_lines(fixture):
         if float(line).is_integer():
             continue
@@ -544,6 +548,7 @@ def priced_ft_corner_leg(fixture):
             if odds and odds > best_odds:
                 best_odds = float(odds)
                 best_line = line
+                best_side = side.capitalize()
     if best_line is None:
         return None
     return CandidateLeg(
@@ -551,7 +556,7 @@ def priced_ft_corner_leg(fixture):
         odds=best_odds,
         model_probability=0.0,
         kickoff_day=local_day(fixture.kickoff_at),
-        market=f"Over {best_line:g} Corners",
+        market=f"{best_side} {best_line:g} Corners",
     )
 
 

@@ -116,7 +116,7 @@ class GenerateResult(BaseModel):
 async def generate_slips(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
-    min_odds: float | None = Query(None, ge=1.01, le=10.0),
+    min_odds: float | None = Query(None, ge=1.01, le=6.0),
     max_odds: float = Query(6.0, ge=2.0, le=6.0),
     max_legs: int = Query(4, ge=1, le=4),
     max_slips: int = Query(1, ge=1, le=10),
@@ -206,11 +206,11 @@ async def generate_slips(
             same_day=same_day,
             eligible=eligible,
         )
-        if want_goals and playable and not goals_pool:
+        if want_goals and not want_corners and playable and not goals_pool:
             reason = "no_model"
         elif want_corners and not want_goals and playable:
             reason = "no_corner"
-        elif weather and reason in {"too_few", "spread_days", "below_floor", "below_min"}:
+        elif weather and reason in {"all_started", "too_few", "spread_days", "below_floor", "below_min"}:
             reason = "weather"
         return GenerateResult(
             slips=[],

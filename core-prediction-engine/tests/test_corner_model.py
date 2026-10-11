@@ -201,3 +201,34 @@ def test_priced_leg_reads_a_half_line():
     assert leg is not None
     assert leg.market == "Over 9.5 Corners"
     assert leg.odds == 1.94
+
+
+def test_priced_leg_labels_the_under_side_when_it_is_best():
+    # The diagnostic leg must name the side it actually picked, not always "Over".
+    fixture = _upcoming(ft_corner_lines={"9.5": {"over": 1.60, "under": 2.10}})
+    leg = priced_ft_corner_leg(fixture)
+    assert leg is not None
+    assert leg.market == "Under 9.5 Corners"
+    assert leg.odds == 2.10
+
+
+def test_a_zero_over95_rate_survives_instead_of_the_league_rate():
+    # The league clears 9.5 corners most weeks, but one side's own last ten
+    # matches never do. That real 0.0 must stay 0.0, not fall back to the league.
+    rows = []
+    for day in range(1, 21):
+        rows.append(_row("Filler", f"FillerRival{day}", 6, 4, day))  # 10 corners
+    for day in range(1, 11):
+        rows.append(_row("Low", f"LowRival{day}", 3, 4, day))  # 7 corners every week
+        rows.append(_row(f"Host{day}", "Guests", 6, 4, day))  # 10 corners
+    feats = build_features(
+        project_corner_history(rows),
+        home_key="low",
+        away_key="guests",
+        today=datetime(2026, 9, 1, tzinfo=timezone.utc).date(),
+        kickoff_day=datetime(2026, 9, 1, tzinfo=timezone.utc).date(),
+    )
+    assert feats is not None
+    assert feats["league_over95_rate"] > 0.0
+    assert feats["home_over95_rate"] == 0.0
+    assert feats["away_over95_rate"] == 1.0
