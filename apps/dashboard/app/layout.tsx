@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Casuya Treble",
-  description: "Over 1.5 football slips (1.30–6.00) for BetPawa",
+  description: "Football slips of one to four legs from BetPawa Tanzania odds, priced 1.30–6.00.",
   applicationName: "Casuya Treble",
   appleWebApp: {
     capable: true,

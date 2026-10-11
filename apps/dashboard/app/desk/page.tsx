@@ -900,6 +900,8 @@ function DeskPage() {
 
           onLogout={logout}
 
+          onClose={() => setSideOpen(false)}
+
           tools={
 
             <div className="tools-row">

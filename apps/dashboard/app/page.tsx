@@ -3,9 +3,9 @@ import { IndexView } from "@/components/IndexView";
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "Casuya Treble: Over 1.5 football slips",
+  title: "Casuya Treble: football slips from BetPawa odds",
   description:
-    "Casuya checks today's football matches and shows a slip of one to four teams only when the combined price lands between 1.30 and 6.00.",
+    "Casuya reads today's BetPawa Tanzania prices and builds one football slip of one to four legs — Over 1.5 goals or corners — priced 1.30 to 6.00.",
 };
 
 export default function Page() {

@@ -955,6 +955,9 @@ button.btn {
 }
 
 .desk-side {
+  /* One horizontal rhythm for the whole rail: section labels, boxed controls,
+     nav rows and the account footer all line up on this inset. */
+  --rail-pad: 1.25rem;
   width: 288px;
   flex: 0 0 288px;
   position: relative;
@@ -962,30 +965,51 @@ button.btn {
   flex-direction: column;
   gap: 0;
   padding: 1.25rem 0 1.25rem;
-  background: var(--rail-grad), #191613;
+  /* The 3px orange crown is a background layer so it stays pinned even when
+     the phone drawer scrolls its own content. */
+  background-image: var(--accent-grad), var(--rail-grad);
+  background-size: 100% 3px, 100% 100%;
+  background-position: top, top;
+  background-repeat: no-repeat, no-repeat;
+  background-color: #191613;
   border-right: 1px solid var(--rail-line);
   color: var(--on-rail);
 }
 
-/* A 3px orange gradient crowns the rail, echoing the brand mark. */
-.desk-side::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--accent-grad);
-  z-index: 1;
+/* Brand lockup sits on the dark rail like a press-box plaque. */
+.desk-side-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 var(--rail-pad) 16px;
 }
 
-/* Brand lockup sits on the dark rail like a press-box plaque. */
 .desk-side .brand {
   min-height: 44px;
-  margin: 0 1.25rem 16px;
+  min-width: 0;
   padding: 0;
   text-decoration: none;
   color: var(--on-rail);
+}
+
+.desk-side-top .brand {
+  margin: 0;
+}
+
+/* The rail's own close toggle only appears with the phone slide-over. */
+.desk-side-top .menu-btn {
+  display: none;
+  flex: 0 0 auto;
+  color: var(--on-rail-muted);
+  background: rgba(246, 240, 230, 0.04);
+  border-color: var(--rail-line);
+}
+
+.desk-side-top .menu-btn:hover {
+  color: var(--on-rail);
+  background: rgba(246, 240, 230, 0.1);
+  border-color: rgba(246, 240, 230, 0.18);
 }
 
 .desk-side .brand-mark {
@@ -1004,7 +1028,7 @@ button.btn {
 
 .desk-side .lang-switch {
   width: auto;
-  margin: 0 1.25rem;
+  margin: 0 var(--rail-pad);
   border-color: var(--rail-line);
 }
 
@@ -1034,7 +1058,7 @@ button.btn {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  padding: 0 1.25rem;
+  padding: 0 var(--rail-pad);
 }
 
 .desk-side .desk-choice button {
@@ -1080,6 +1104,8 @@ button.btn {
   margin: 16px 0 0;
   padding: 0;
   overflow-y: auto;
+  /* Reserve the scrollbar so the full-bleed rows never shift or slide under it. */
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(246, 240, 230, 0.18) transparent;
 }
@@ -1102,13 +1128,20 @@ button.btn {
   gap: 8px;
   flex: 0 0 auto;
   margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--rail-line);
+}
+
+/* Hairline divider, inset to the content column like every other rule. */
+.desk-account::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 0 var(--rail-pad) 4px;
+  background: var(--rail-line);
 }
 
 /* The Generate button is the hero of the desk: glowing orange, warm sheen on hover. */
 .desk-generate.btn.primary {
-  margin: 0.4rem 1.25rem 0;
+  margin: 0.4rem var(--rail-pad) 0;
   min-height: 3.1rem;
   border-radius: 12px;
   background: var(--accent-grad);
@@ -1150,7 +1183,7 @@ button.btn {
 }
 
 .desk-range {
-  margin: 0.5rem 1.25rem 0;
+  margin: 0.5rem var(--rail-pad) 0;
   font-size: 0.74rem;
   line-height: 1.35;
   color: var(--on-rail-faint);
@@ -1159,7 +1192,7 @@ button.btn {
 .desk-confirm {
   display: grid;
   gap: 0.5rem;
-  margin: 0 1.25rem;
+  margin: 0 var(--rail-pad);
   padding: 0.85rem 0.9rem;
   border: 1px solid rgba(255, 122, 61, 0.45);
   border-radius: 12px;
@@ -1219,7 +1252,7 @@ button.btn {
 }
 
 .desk-label {
-  margin: 0 1.25rem 0.75rem;
+  margin: 0 var(--rail-pad) 0.75rem;
   padding: 0;
   font-family: var(--font-display);
   font-size: 0.75rem;
@@ -1246,7 +1279,9 @@ button.btn {
   gap: 8px;
   width: 100%;
   min-height: 2.6rem;
-  padding: 0.5rem 1.15rem;
+  /* Border + padding add up to --rail-pad, so the label lines up with the
+     section headers while the row stays full-bleed for the active stripe. */
+  padding: 0.5rem var(--rail-pad) 0.5rem calc(var(--rail-pad) - 3px);
   border: 0;
   border-left: 3px solid transparent;
   border-radius: 0;
@@ -1259,7 +1294,16 @@ button.btn {
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+/* Keep a long label on one line and let it ellipsize before the count pill. */
+.desk-side .desk-nav button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .desk-side .desk-nav button b {
+  flex: 0 0 auto;
   min-width: 1.75rem;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
@@ -1313,7 +1357,7 @@ button.btn {
 }
 
 .desk-cal {
-  margin: 1.1rem 1.25rem 0;
+  margin: 1.1rem var(--rail-pad) 0;
   padding-top: 0.85rem;
   border-top: 1px solid var(--rail-line);
 }
@@ -1375,8 +1419,8 @@ button.btn {
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  min-height: 2.5rem;
-  padding: 0.55rem 1.15rem;
+  min-height: 2.6rem;
+  padding: 0.55rem var(--rail-pad) 0.55rem calc(var(--rail-pad) - 3px);
   border: 0;
   border-left: 3px solid transparent;
   border-radius: 0;
@@ -1387,6 +1431,7 @@ button.btn {
   font-weight: 600;
   text-align: left;
   text-decoration: none;
+  overflow-wrap: anywhere;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -1401,7 +1446,7 @@ button.btn {
 .desk-side .tools-row {
   display: grid;
   gap: 8px;
-  margin: 8px 1.15rem 0;
+  margin: 8px var(--rail-pad) 0;
   padding: 0;
   background: transparent;
   border: 0;
@@ -1450,12 +1495,22 @@ button.btn {
     top: 0;
     bottom: 0;
     height: auto;
-    width: min(320px, 88vw);
+    width: min(324px, 86vw);
     overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: auto;
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
     border-radius: 0 16px 16px 0;
     transform: translateX(-105%);
-    transition: transform 0.18s ease;
+    transition: transform 0.2s ease;
     box-shadow: var(--shadow-lift);
+  }
+
+  .desk-side-top .menu-btn {
+    display: inline-flex;
   }
 
   .desk-scroll {
@@ -1520,9 +1575,15 @@ button.btn {
 }
 
 .desk-places {
-  margin-top: 2px;
-  padding-top: 10px;
-  border-top: 1px solid var(--rail-line);
+  margin-top: 4px;
+}
+
+.desk-places::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 0 var(--rail-pad) 10px;
+  background: var(--rail-line);
 }
 
 @media (max-width: 700px) {

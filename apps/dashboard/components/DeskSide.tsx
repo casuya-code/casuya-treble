@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ReactNode } from "react";
-import { LangSwitch, useLandingLang } from "@/components/LandingLang";
+import { LangSwitch, MenuButton, useLandingLang } from "@/components/LandingLang";
 import { StatusKind } from "@/components/StatusBadge";
 import { fill, formatDay, Lang } from "@/lib/landingCopy";
 
@@ -56,6 +56,8 @@ type Props = {
   onRefresh: () => void;
   onToggleTools: () => void;
   onLogout: () => void;
+  /** Close the phone drawer (the rail is a slide-over below 800px). */
+  onClose: () => void;
   tools?: ReactNode;
 };
 
@@ -83,6 +85,7 @@ export function DeskSide({
   onRefresh,
   onToggleTools,
   onLogout,
+  onClose,
   tools,
 }: Props) {
   const { t } = useLandingLang();
@@ -103,12 +106,15 @@ export function DeskSide({
 
   return (
     <aside className="desk-side" aria-label={t.menu}>
-      <Link href="/" className="brand">
-        <span className="brand-mark">C</span>
-        <span className="brand-text">
-          Casuya <strong className="brand-long">Treble</strong>
-        </span>
-      </Link>
+      <div className="desk-side-top">
+        <Link href="/" className="brand">
+          <span className="brand-mark">C</span>
+          <span className="brand-text">
+            Casuya <strong className="brand-long">Treble</strong>
+          </span>
+        </Link>
+        <MenuButton open label={t.menu} onToggle={onClose} />
+      </div>
 
       <section className="desk-module" aria-labelledby="desk-step-make">
         <p className="desk-label" id="desk-step-make">

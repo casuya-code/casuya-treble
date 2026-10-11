@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Casuya Treble",
     short_name: "Casuya",
-    description: "Over 1.5 trebles — copy to BetPawa and track slips.",
+    description: "Football slips from BetPawa odds — copy to BetPawa and track results.",
     start_url: "/",
     scope: "/",
     display: "standalone",
